@@ -1,6 +1,8 @@
-# CAG - Conversational AI Gateway
+# AskGillu - An Intelligent Knowledge Retrieval Solution
 
-A sophisticated AI-powered document processing and chat system with advanced PDF parsing, hybrid search capabilities, and web scraping functionality.
+**A RAG-Based AI Assistant for Shri Ramswaroop Memorial University (SRMU)**
+
+AskGillu is a production-grade Retrieval-Augmented Generation (RAG) system that provides intelligent, context-aware responses to university-related queries. Built with advanced semantic search, multi-strategy re-ranking, and intelligent caching, AskGillu delivers accurate information about SRMU's academic programs, policies, procedures, and campus facilities 24/7.
 
 ## 🌟 Features
 
@@ -259,4 +261,6 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ---
 
-**Built with ❤️ by the CAG Team**
+**Built with ❤️ by the Shrinjay Shresth**
+#   A s k G i l l u  
+ 
