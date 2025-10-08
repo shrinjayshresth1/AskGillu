@@ -24,7 +24,7 @@ AskGillu is a production-grade Retrieval-Augmented Generation (RAG) system that 
 ## 🏗️ Project Structure
 
 ```
-CAG/
+AskGillu/
 ├── docs/                          # Documentation
 │   ├── features/                  # Feature documentation
 │   ├── guides/                    # User and setup guides
@@ -42,7 +42,7 @@ CAG/
 │   └── docs/                      # Backend-specific docs
 ├── frontend-react/                # React frontend
 ├── vectorstore/                   # Vector database storage
-└── docs/                         # PDF documents
+└── tests/                         # Integration tests
 ```
 
 ## 🚀 Quick Start
@@ -112,7 +112,7 @@ npm start
 
 ## ⚡ Advanced RAG Configuration
 
-ASK_GILLU now includes production-grade RAG optimizations. Configure these features in your `.env` file:
+AskGillu includes production-grade RAG optimizations. Configure these features in your `.env` file:
 
 ### Key Configuration Options
 
@@ -255,12 +255,10 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## 🔗 Links
 
-- [Project Repository](https://github.com/shrinjayshresth1/shrin)
+- [Project Repository](https://github.com/shrinjayshresth1/AskGillu)
 - [Backend Documentation](backend/docs/)
 - [API Documentation](http://localhost:8000/docs) (when running)
 
 ---
 
-**Built with ❤️ by the Shrinjay Shresth**
-#   A s k G i l l u  
- 
+**Built with ❤️ by Shrinjay Shresth**
