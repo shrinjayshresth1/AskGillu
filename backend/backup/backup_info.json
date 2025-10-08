@@ -1,0 +1,12 @@
+{
+  "timestamp": "2025-09-14T01:07:59.516213",
+  "backup_dir": "C:\\Users\\shrin\\OneDrive\\Desktop\\CAG\\backend\\backup",
+  "backups": {
+    "faiss": "C:\\Users\\shrin\\OneDrive\\Desktop\\CAG\\backend\\backup\\faiss_backup_20250914_010759",
+    "qdrant": {
+      "documents_count": 49,
+      "collection_name": "askgillu_documents",
+      "note": "Qdrant is cloud-based - manual recreation required if rollback needed"
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "ask-gillu-project",
+  "version": "1.0.0",
+  "description": "Cache-Augmented Generation system for SRMU",
+  "private": true
+}

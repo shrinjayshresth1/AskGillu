@@ -1,0 +1,31 @@
+fastapi
+uvicorn
+python-multipart
+pypdf
+qdrant-client
+langchain
+langchain-qdrant
+langchain-huggingface
+sentence-transformers
+groq
+langchain-groq
+langchain-community
+langchain-text-splitters
+python-dotenv
+duckduckgo-search
+# Advanced PDF parsing dependencies
+pdfplumber
+pymupdf
+pytesseract
+pillow
+# Web scraping dependencies
+beautifulsoup4
+requests
+newspaper3k
+lxml
+html5lib
+# Advanced RAG dependencies
+spacy
+numpy
+scikit-learn
+faiss-cpu

@@ -1,0 +1,26 @@
+# ASK_GILLU Test Configuration
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--verbose",
+    "--tb=short",
+    "--strict-markers",
+    "--strict-config",
+    "--html=test_reports/report.html",
+    "--self-contained-html",
+    "--cov=backend",
+    "--cov-report=html:test_reports/coverage",
+    "--cov-report=term-missing",
+    "--maxfail=5",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+    "performance: marks tests as performance tests",
+    "web: marks tests that require web access",
+]
+timeout = 300

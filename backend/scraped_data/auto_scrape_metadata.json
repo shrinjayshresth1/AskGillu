@@ -1,0 +1,29 @@
+{
+  "auto_scrape_completed_at": "2025-07-11T15:58:25.046897",
+  "websites_configured": 4,
+  "successfully_scraped": 0,
+  "failed_scrapes": 4,
+  "total_words_added": 0,
+  "scraped_websites": [
+    {
+      "url": "https://srmu.ac.in/placement-overview",
+      "name": "SRMU Placement Overview",
+      "priority": 1
+    },
+    {
+      "url": "https://srmu.ac.in/academics/courses",
+      "name": "SRMU Course Catalog",
+      "priority": 1
+    },
+    {
+      "url": "https://en.wikipedia.org/wiki/Data_science",
+      "name": "Data Science Overview",
+      "priority": 2
+    },
+    {
+      "url": "https://en.wikipedia.org/wiki/Machine_learning",
+      "name": "Machine Learning Overview",
+      "priority": 2
+    }
+  ]
+}
