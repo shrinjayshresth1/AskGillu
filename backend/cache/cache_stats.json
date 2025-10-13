@@ -1,13 +1,14 @@
 {
-  "total_queries": 2,
+  "total_queries": 3,
   "cache_hits": 0,
-  "cache_misses": 2,
-  "cache_size": 2,
+  "cache_misses": 3,
+  "cache_size": 3,
   "avg_response_time_cached": 0.0,
   "avg_response_time_uncached": 0.0,
   "top_queries": {
     "Tell me about the different departments concerned in SRMU": 1,
-    "Tell me about the different departments concerned in SRMU with their contact details if any": 1
+    "Tell me about the different departments concerned in SRMU with their contact details if any": 1,
+    "Tell me about Shrinjay and how he is different from Tabish": 1
   },
   "last_cleanup": null
 }
