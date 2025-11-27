@@ -1,14 +1,20 @@
 {
-  "total_queries": 3,
+  "total_queries": 9,
   "cache_hits": 0,
-  "cache_misses": 3,
-  "cache_size": 3,
+  "cache_misses": 9,
+  "cache_size": 9,
   "avg_response_time_cached": 0.0,
   "avg_response_time_uncached": 0.0,
   "top_queries": {
     "Tell me about the different departments concerned in SRMU": 1,
     "Tell me about the different departments concerned in SRMU with their contact details if any": 1,
-    "Tell me about Shrinjay and how he is different from Tabish": 1
+    "Tell me about Shrinjay and how he is different from Tabish": 1,
+    "Hi, Can you tell me about Shrinjay Shresth": 1,
+    "I am a first year student and i have interest in technical stuffs, I am new here and i dont know anything abitut SRMU and what technical oppurtinities can i get here'": 1,
+    "Tell me about OGC standards": 1,
+    "Tell me about Shrinjay Shresth, In what area of the technology does he works ?": 1,
+    "I am a first year student in SRMU and i have interest in technical stuffs, how do i proceed in SR<U": 1,
+    "I am a first year student and i am eager to apply for technical understanding and clubs. What should i apply for": 1
   },
   "last_cleanup": null
 }

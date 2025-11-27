@@ -16,7 +16,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 import pickle
 from threading import Lock
-from langchain.schema import Document
+from langchain_core.documents import Document
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

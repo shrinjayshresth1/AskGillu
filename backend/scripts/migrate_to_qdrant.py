@@ -85,8 +85,11 @@ def migrate_faiss_to_qdrant():
         qdrant_manager = get_qdrant_manager()
         
         # Check Qdrant health
-        if not qdrant_manager.health_check():
-            logger.error("Qdrant service is not available. Please start Qdrant service.")
+        is_healthy, error_msg = qdrant_manager.health_check()
+        if not is_healthy:
+            logger.error(f"Qdrant service is not available. Please start Qdrant service.")
+            if error_msg:
+                logger.error(f"Error details: {error_msg}")
             return False
         
         # Try to load existing FAISS data first
@@ -184,8 +187,11 @@ def verify_qdrant_setup():
         qdrant_manager = get_qdrant_manager()
         
         # Health check
-        if not qdrant_manager.health_check():
+        is_healthy, error_msg = qdrant_manager.health_check()
+        if not is_healthy:
             logger.error("❌ Qdrant service is not available")
+            if error_msg:
+                logger.error(f"Error details: {error_msg}")
             logger.info("To start Qdrant locally, run:")
             logger.info("docker run -p 6333:6333 qdrant/qdrant")
             return False

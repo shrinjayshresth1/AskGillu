@@ -12,7 +12,7 @@ from typing import List, Dict, Any, Optional, Tuple, Union
 from dataclasses import dataclass
 from enum import Enum
 import numpy as np
-from langchain.schema import Document
+from langchain_core.documents import Document
 
 # Optional dependencies for advanced re-ranking
 try:

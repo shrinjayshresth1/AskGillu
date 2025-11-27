@@ -11,7 +11,7 @@ import logging
 import time
 from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime
-from langchain.schema import Document
+from langchain_core.documents import Document
 from langchain_huggingface import HuggingFaceEmbeddings
 from dotenv import load_dotenv
 
@@ -495,13 +495,17 @@ class UnifiedVectorManager:
             
             if self.db_type == "qdrant":
                 # Get Qdrant-specific info
-                if self.vector_store.health_check():
+                is_healthy, error_msg = self.vector_store.health_check()
+                if is_healthy:
                     collection_info = self.vector_store.get_collection_info()
                     status["documents_count"] = collection_info.get("points_count", 0)
                     status["collection_name"] = self.vector_store.collection_name
                 else:
                     status["status"] = "not_ready"
-                    status["message"] = "Qdrant service not available"
+                    if error_msg:
+                        status["message"] = f"Qdrant service not available: {error_msg}"
+                    else:
+                        status["message"] = "Qdrant service not available"
                     
             elif self.db_type == "faiss":
                 # Get FAISS-specific info

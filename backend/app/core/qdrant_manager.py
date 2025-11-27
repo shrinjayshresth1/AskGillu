@@ -261,17 +261,22 @@ class QdrantManager:
             logger.error(f"Error updating document: {str(e)}")
             return False
     
-    def health_check(self) -> bool:
+    def health_check(self) -> tuple[bool, str]:
         """
         Check if Qdrant service is healthy
+        Returns: (is_healthy: bool, error_message: str)
         """
         try:
             collections = self.client.get_collections()
             logger.info("Qdrant health check: OK")
-            return True
+            return True, ""
         except Exception as e:
-            logger.error(f"Qdrant health check failed: {str(e)}")
-            return False
+            error_msg = str(e)
+            logger.error(f"Qdrant health check failed: {error_msg}")
+            logger.error(f"Qdrant URL: {self.qdrant_url}")
+            logger.error(f"Qdrant Host: {self.qdrant_host}, Port: {self.qdrant_port}")
+            logger.error(f"Has API Key: {bool(self.qdrant_api_key)}")
+            return False, error_msg
 
 
 def get_qdrant_manager() -> QdrantManager:

@@ -15,7 +15,7 @@ from pathlib import Path
 from enum import Enum
 import sqlite3
 import threading
-from langchain.schema import Document
+from langchain_core.documents import Document
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

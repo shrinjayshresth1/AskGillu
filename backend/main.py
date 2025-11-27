@@ -4,7 +4,6 @@ import os
 import glob
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
-from langchain.chains import RetrievalQA
 from langchain_groq import ChatGroq
 from pypdf import PdfReader
 from dotenv import load_dotenv

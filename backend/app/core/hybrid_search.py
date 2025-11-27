@@ -11,7 +11,7 @@ from typing import List, Dict, Any, Optional, Tuple
 import re
 import math
 from collections import Counter, defaultdict
-from langchain.schema import Document
+from langchain_core.documents import Document
 from langchain_huggingface import HuggingFaceEmbeddings
 import numpy as np
 
