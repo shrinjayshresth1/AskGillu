@@ -99,7 +99,7 @@ def initialize_documents():
                     # Enhanced text splitting with better parameters
                     text_splitter = RecursiveCharacterTextSplitter(
                         separators=["\n\n", "\n", ". ", "! ", "? ", " ", ""],
-                        chunk_size=8000,  # Slightly smaller chunks for better retrieval
+                        chunk_size=4000,  # Smaller chunks for better token management
                         chunk_overlap=1200,  # More overlap for context preservation
                         length_function=len
                     )
@@ -308,7 +308,7 @@ async def reindex_documents():
                     if raw_text.strip():
                         text_splitter = RecursiveCharacterTextSplitter(
                             separators=["\n\n", "\n", ". ", "! ", "? ", " ", ""],
-                            chunk_size=8000,
+                            chunk_size=4000,
                             chunk_overlap=1200,
                             length_function=len
                         )
@@ -480,7 +480,7 @@ def combine_sources(question: str, system_prompt: str, use_web_search: bool = Fa
     # Always include document-based context if available
     try:
         # Get relevant documents from enhanced vector store with caching and feedback
-        search_result = vector_manager.similarity_search(question, k=5)
+        search_result = vector_manager.similarity_search(question, k=3)
         
         # Handle both old and new return formats
         if isinstance(search_result, tuple):
