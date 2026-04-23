@@ -12,7 +12,20 @@ The router uses LLM intent classification to decide which tool to call.
 """
 import uuid
 from datetime import datetime, timedelta
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List
+import requests
+from bs4 import BeautifulSoup
+from duckduckgo_search import DDGS
+
+# Import the existing WebScraper
+try:
+    from app.services.web_scraper import WebScraper
+except ImportError:
+    # Fallback if imported from a different path
+    try:
+        from services.web_scraper import WebScraper
+    except ImportError:
+        WebScraper = None
 
 
 # ── Tool implementations ────────────────────────────────────────────────────
@@ -129,6 +142,68 @@ def raise_grievance(
     }
 
 
+def deep_web_browse(query: str, max_pages: int = 1, **kwargs) -> Dict[str, Any]:
+    """
+    Perform a deep web search by visiting and parsing the full content of websites.
+    Call this when the user needs detailed, up-to-date information from the web.
+    """
+    try:
+        print(f"[AGENT] Deep browsing for: {query}")
+        
+        # Step 1: Search for URLs
+        with DDGS() as ddgs:
+            search_results = list(ddgs.text(query, max_results=max_pages + 1))
+        
+        if not search_results:
+            return {"error": "No search results found.", "tool": "deep_web_browse"}
+            
+        urls = [r.get('href') for r in search_results if r.get('href')][:max_pages]
+        
+        # Step 2: Use WebScraper to get full content
+        scraper = WebScraper() if WebScraper else None
+        if not scraper:
+            # Simple fallback if scraper is missing
+            return {
+                "tool": "deep_web_browse",
+                "message": f"Found these results for '{query}':\n\n" + 
+                           "\n".join([f"- **{r['title']}**: {r['body']} ({r['href']})" for r in search_results])
+            }
+            
+        browsed_content = []
+        for url in urls:
+            content_data = scraper.scrape_url(url)
+            if content_data:
+                browsed_content.append(content_data)
+        
+        if not browsed_content:
+            # Fallback to snippets if scraping failed
+            snippets = "\n".join([f"- {r['title']}: {r['body']}" for r in search_results])
+            return {
+                "tool": "deep_web_browse",
+                "message": f"I couldn't parse the full websites, but here is what I found on the web:\n\n{snippets}",
+                "status": "partial"
+            }
+            
+        # Format the deep content
+        final_context = []
+        for i, data in enumerate(browsed_content, 1):
+            text = (
+                f"SOURCE {i}: {data['title']} ({data['url']})\n"
+                f"CONTENT: {data['content'][:4000]}..." # Limit to 4000 chars per page
+            )
+            final_context.append(text)
+            
+        return {
+            "tool": "deep_web_browse",
+            "message": "\n\n".join(final_context),
+            "urls_visited": [d['url'] for d in browsed_content],
+            "status": "success"
+        }
+        
+    except Exception as e:
+        return {"error": f"Deep browse failed: {str(e)}", "tool": "deep_web_browse"}
+
+
 # ── Tool Registry ────────────────────────────────────────────────────────────
 
 TOOL_REGISTRY: Dict[str, Dict] = {
@@ -155,6 +230,15 @@ TOOL_REGISTRY: Dict[str, Dict] = {
         "args_schema": {
             "category": "string (Academic/Administrative/Hostel/Fee/General)",
             "description": "string (brief description)",
+        },
+    },
+    "deep_web_browse": {
+        "fn": deep_web_browse,
+        "description": "Perform a deep web search by visiting and parsing the full content of websites. Call this for detailed, up-to-date information that requires reading full pages rather than just snippets.",
+        "keywords": ["search", "find", "latest", "news", "current", "browse", "website", "lookup"],
+        "args_schema": {
+            "query": "string (the search query)",
+            "max_pages": "integer (optional, defaults to 1)"
         },
     },
 }
