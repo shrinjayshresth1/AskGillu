@@ -7,8 +7,6 @@ import {
   ChevronDown,
   ChevronUp,
   Paperclip,
-  X,
-  Zap,
   ArrowLeft,
   Trash2,
 } from "lucide-react";

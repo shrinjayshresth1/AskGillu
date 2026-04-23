@@ -1,21 +1,15 @@
 import React, { useState } from "react";
 import {
   MessageCircle,
-  Users,
-  HelpCircle,
   ChevronDown,
   ChevronUp,
   Star,
-  Award,
   BookOpen,
   Globe,
   Mail,
   Phone,
   MapPin,
   Zap,
-  Camera,
-  Languages,
-  RefreshCw,
   Brain,
 } from "lucide-react";
 
