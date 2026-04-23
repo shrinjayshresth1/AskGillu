@@ -18,6 +18,12 @@ from app.services.web_scraper import WebScraper
 from app.core.unified_vector_manager import get_unified_manager, switch_vector_database
 from config.settings import Config, config
 
+# AskGillu 2.0 — new feature modules
+from app.core.vision_processor import process_image_for_rag
+from app.utils.translator import translate_query_to_english, translate_response_to_hindi
+from app.core.agent_tools import classify_intent, execute_tool, TOOL_REGISTRY
+from scripts.file_watcher import start_file_watcher, get_watcher_status
+
 # Load environment variables from .env file
 load_dotenv()
 
@@ -169,6 +175,15 @@ async def startup_event():
     if AUTO_SCRAPE_CONFIG["scrape_on_startup"]:
         await auto_scrape_developer_websites()
 
+    # Start real-time file watcher if enabled
+    if os.getenv("ENABLE_FILE_WATCHER", "true").lower() == "true":
+        docs_dir = os.path.join(os.path.dirname(__file__), "..", "docs")
+        docs_dir = os.path.abspath(docs_dir)
+        start_file_watcher(
+            docs_dir=docs_dir,
+            ingest_url="http://localhost:8000/ingest",
+        )
+
 @app.get("/")
 async def root():
     """Root endpoint to check if documents are loaded"""
@@ -251,12 +266,152 @@ async def get_status():
             "web_search_restricted": len(ALLOWED_WEBSITES) > 0
         }
 
-def perform_web_search(query: str, max_results: int = 5) -> str:
+@app.post("/reindex")
+async def reindex_documents():
     """
-    Perform web search using DuckDuckGo and return formatted results
-    Only searches from allowed websites if ALLOWED_WEBSITES is configured
+    Force re-index: wipe the current Qdrant collection and re-ingest all documents fresh.
+    This ensures Qdrant has the exact same data as FAISS.
     """
     try:
+        print("[REINDEX] Starting forced re-indexing...")
+        
+        # Step 1: Delete the existing Qdrant collection entirely
+        if vector_manager.db_type == "qdrant":
+            try:
+                vector_manager.vector_store.delete_collection()
+                print("[REINDEX] Deleted existing Qdrant collection.")
+            except Exception as e:
+                print(f"[REINDEX] Could not delete collection (may not exist): {e}")
+            
+            # Recreate the collection
+            vector_manager.vector_store.create_collection()
+            print("[REINDEX] Recreated empty Qdrant collection.")
+        
+        # Step 2: Clear the in-memory document cache
+        vector_manager.documents_cache = []
+        if vector_manager.hybrid_retriever:
+            vector_manager.hybrid_retriever.fit([])
+        
+        # Step 3: Re-read all PDFs from the docs/ folder and re-ingest
+        docs_dir = os.path.join(os.path.dirname(__file__), "..", "docs")
+        
+        all_texts = []
+        processed_files = []
+        errors = []
+        
+        for doc_name in ALLOWED_DOCUMENTS:
+            file_path = os.path.join(docs_dir, doc_name)
+            
+            if os.path.exists(file_path):
+                try:
+                    raw_text, parsing_metadata = vector_manager.parse_pdf_advanced(file_path, method="hybrid")
+                    if raw_text.strip():
+                        text_splitter = RecursiveCharacterTextSplitter(
+                            separators=["\n\n", "\n", ". ", "! ", "? ", " ", ""],
+                            chunk_size=8000,
+                            chunk_overlap=1200,
+                            length_function=len
+                        )
+                        texts = text_splitter.split_text(raw_text)
+                        all_texts.extend(texts)
+                        processed_files.append({"name": doc_name, "chunks": len(texts)})
+                        print(f"[REINDEX] Processed {doc_name}: {len(texts)} chunks")
+                    else:
+                        errors.append({"name": doc_name, "error": "No text content extracted"})
+                except Exception as e:
+                    errors.append({"name": doc_name, "error": str(e)})
+            else:
+                errors.append({"name": doc_name, "error": "File not found"})
+        
+        if not all_texts:
+            return {"success": False, "message": "No texts found to index", "errors": errors}
+        
+        # Step 4: Add all documents to the vector store
+        metadatas = [
+            {"source": "srmu_documents", "chunk_id": i, "processed_at": datetime.now().isoformat()}
+            for i in range(len(all_texts))
+        ]
+        
+        success = vector_manager.add_documents(all_texts, metadatas)
+        
+        if success:
+            # Verify the new count
+            status = vector_manager.get_status()
+            new_count = status.get("documents_count", 0)
+            
+            print(f"[REINDEX] ✅ Successfully re-indexed {len(all_texts)} chunks into {vector_manager.db_type.upper()}")
+            return {
+                "success": True,
+                "message": f"Successfully re-indexed {len(all_texts)} chunks into {vector_manager.db_type.upper()}",
+                "documents_processed": processed_files,
+                "total_chunks": len(all_texts),
+                "new_document_count": new_count,
+                "errors": errors
+            }
+        else:
+            return {"success": False, "message": "Failed to add documents to vector store", "errors": errors}
+        
+    except Exception as e:
+        print(f"[REINDEX] ❌ Error: {e}")
+        return {"success": False, "message": f"Re-indexing failed: {str(e)}"}
+
+def perform_web_search(query: str, max_results: int = 5) -> str:
+    """
+    Perform web search using Tavily API for rich RAG context, 
+    with a fallback to DuckDuckGo if Tavily key is missing.
+    """
+    try:
+        tavily_key = app_config.TAVILY_API_KEY
+        if tavily_key:
+            try:
+                from tavily import TavilyClient
+                client = TavilyClient(api_key=tavily_key)
+                
+                # Prepare search parameters
+                search_params = {
+                    "query": query,
+                    "search_depth": "advanced", # Gets full content
+                    "max_results": max_results,
+                    "include_answer": True # Tavily can answer queries directly
+                }
+                
+                # Apply site restrictions
+                if ALLOWED_WEBSITES:
+                    search_params["include_domains"] = ALLOWED_WEBSITES
+                    
+                response = client.search(**search_params)
+                
+                formatted_results = []
+                
+                # Add the direct answer if Tavily provided one
+                if response.get("answer"):
+                    formatted_results.append(f"Tavily AI Answer: {response['answer']}\n")
+                    
+                results = response.get("results", [])
+                if not results:
+                    if ALLOWED_WEBSITES:
+                        return f"No web search results found for this query from allowed websites: {', '.join(ALLOWED_WEBSITES[:5])}{'...' if len(ALLOWED_WEBSITES) > 5 else ''}"
+                    return "No web search results found for this query."
+                    
+                for i, result in enumerate(results, 1):
+                    formatted_result = f"""
+Result {i}:
+Title: {result.get('title', 'No title')}
+URL: {result.get('url', 'No URL')}
+Content: {result.get('content', 'No content')}
+"""
+                    formatted_results.append(formatted_result)
+                    
+                search_info = ""
+                if ALLOWED_WEBSITES:
+                    search_info = f"\n[Search via Tavily limited to trusted websites: {', '.join(ALLOWED_WEBSITES[:3])}{'...' if len(ALLOWED_WEBSITES) > 3 else ''}]\n"
+                    
+                return search_info + "\n".join(formatted_results)
+            except Exception as tavily_error:
+                print(f"Tavily search failed, falling back to DDG: {str(tavily_error)}")
+                # Fall through to DDG
+        
+        # Fallback to DuckDuckGo
         # If no allowed websites specified, search normally
         if not ALLOWED_WEBSITES:
             search_query = query
@@ -334,7 +489,9 @@ def combine_sources(question: str, system_prompt: str, use_web_search: bool = Fa
         else:
             # Backward compatibility - old format returns just docs
             docs = search_result
-            search_metadata["documents_found"] = len(docs) if docs else 0
+        
+        # Always set documents_found from actual results
+        search_metadata["documents_found"] = len(docs) if docs else 0
         
         if docs:
             doc_context = "\n\n".join([doc.page_content for doc in docs])
@@ -358,54 +515,231 @@ def combine_sources(question: str, system_prompt: str, use_web_search: bool = Fa
 @app.post("/ask")
 async def ask_question(
     question: str = Form(...),
-    system_prompt: str = Form("You are ASK_GILLU, an AI assistant for SRMU (Shri Ramswaroop Memorial University). Answer questions based on the provided documents and be helpful and accurate."),
-    use_web_search: bool = Form(False)
+    system_prompt: str = Form("You are AskGillu, the official AI assistant for Shri Ramswaroop Memorial University (SRMU). You MUST answer ONLY using the provided context. If the context does not contain enough information to answer, say 'I don't have enough information in my documents to answer that.' Do NOT make up facts, statistics, names, dates, or any information not explicitly present in the context."),
+    use_web_search: bool = Form(False),
+    language: str = Form("en"),  # "en" or "hi"
+    user_id: Optional[str] = Form(None),  # ✨ Stateful memory: student identifier
 ):
-    """Answer questions based on documents with optional web search - Enhanced with advanced RAG features"""
+    """Answer questions based on documents with optional web search - Enhanced with anti-hallucination guardrails
+    Supports optional `user_id` for Stateful Vector Memory (persistent context across sessions).
+    """
     try:
+        # ── Multilingual: translate Hindi → English for RAG ──
+        processed_question, was_translated = translate_query_to_english(question, language)
+
+        # ── Stateful Memory: retrieve relevant past exchanges ──
+        memory_context_block = ""
+        if user_id and user_id.strip():
+            past_exchanges = vector_manager.retrieve_memory(
+                user_id=user_id.strip(), current_query=processed_question, k=3
+            )
+            if past_exchanges:
+                memory_snippets = "\n".join(
+                    f"- {doc.page_content}" for doc in past_exchanges
+                )
+                memory_context_block = (
+                    f"STUDENT MEMORY CONTEXT (past interactions from this student):\n"
+                    f"{memory_snippets}\n"
+                    f"Use the above memory only to personalise tone; still ground answers on DOCUMENTS below.\n\n"
+                )
+                print(f"[MEMORY] Injected {len(past_exchanges)} memory chunks for user='{user_id}'")
+
         # Get context from documents and optionally web search with metadata
-        context, search_metadata = combine_sources(question, system_prompt, use_web_search)
+        context, search_metadata = combine_sources(processed_question, system_prompt, use_web_search)
         
-        # Create the full prompt
-        full_prompt = f"""
+        # ── Context Gating: refuse if no relevant context found ──
+        docs_found = search_metadata.get("documents_found", 0)
+        has_web_context = use_web_search and context and "WEB SEARCH RESULTS" in context
+        
+        if docs_found == 0 and not has_web_context:
+            no_info_msg = (
+                "I'm sorry, I don't have enough information in my university documents to answer that question. "
+                "Please try rephrasing your question, or ask something related to SRMU's academics, admissions, "
+                "fees, placements, campus life, or policies."
+            )
+            if language == "hi" or was_translated:
+                no_info_msg = translate_response_to_hindi(no_info_msg)
+            return {
+                "answer": no_info_msg,
+                "sources_used": {"documents": False, "web_search": False, "web_search_restricted": False},
+                "advanced_rag_features": {
+                    "documents_found": 0,
+                    "cache_hit": False,
+                    "semantic_chunks_used": False,
+                    "results_reranked": False,
+                    "response_time_ms": 0,
+                    "context_gated": True
+                },
+                "language": language,
+                "translated": was_translated,
+            }
+        
+        # Create the full prompt with strict grounding rules
+        full_prompt = f"""You are AskGillu, SRMU's official AI assistant.
+
 {system_prompt}
 
+IMPORTANT RULES — you MUST follow these:
+1. Answer ONLY using the CONTEXT provided below. Do NOT use your own knowledge or training data.
+2. If the context does not contain the answer, respond: "I don't have enough information in my documents to answer that."
+3. NEVER fabricate facts, statistics, names, dates, fees, phone numbers, or any specific information.
+4. If the context partially answers the question, share only what is supported and clearly state what is missing.
+5. When possible, reference the source (e.g., "According to the university documents...").
+
+{memory_context_block}--- CONTEXT START ---
 {context}
+--- CONTEXT END ---
 
-Question: {question}
+Question: {processed_question}
 
-Please provide a comprehensive answer based on the available information above. If using web search results, prioritize university documents but supplement with web information where helpful.
-"""
+Answer strictly from the context above. If unsure, say you don't have enough information."""
         
-        # Initialize the language model
+        # Initialize the language model — 70B for better grounding
         llm = ChatGroq(
-            model="llama-3.1-8b-instant",
-            temperature=0.2,
+            model="llama-3.3-70b-versatile",
+            temperature=0.0,
             groq_api_key=GROQ_API_KEY
         )
         
         # Get response from the model
         response = llm.invoke(full_prompt)
+        answer_text = response.content
+
+        # ── Multilingual: translate response back to Hindi if needed ──
+        if language == "hi" or was_translated:
+            answer_text = translate_response_to_hindi(answer_text)
+        
+        # ── Stateful Memory: persist this exchange asynchronously ──
+        if user_id and user_id.strip() and answer_text:
+            try:
+                vector_manager.save_memory(
+                    user_id=user_id.strip(),
+                    query=processed_question,
+                    response=answer_text,
+                )
+                print(f"[MEMORY] Persisted exchange for user='{user_id}'")
+            except Exception as mem_err:
+                # Memory persistence must never block the main response
+                print(f"[MEMORY] WARNING: Could not persist memory: {mem_err}")
         
         # Enhanced response with advanced RAG metadata
         return {
-            "answer": response.content,
+            "answer": answer_text,
             "sources_used": {
-                "documents": search_metadata.get("documents_found", 0) > 0,
+                "documents": docs_found > 0,
                 "web_search": use_web_search,
                 "web_search_restricted": len(ALLOWED_WEBSITES) > 0 if use_web_search else False
             },
             "advanced_rag_features": {
-                "documents_found": search_metadata.get("documents_found", 0),
+                "documents_found": docs_found,
                 "cache_hit": search_metadata.get("cache_hit", False),
                 "semantic_chunks_used": search_metadata.get("semantic_chunks", False),
                 "results_reranked": search_metadata.get("reranked", False),
                 "response_time_ms": search_metadata.get("response_time_ms", 0)
-            }
+            },
+            "language": language,
+            "translated": was_translated,
+            "memory_active": bool(user_id and user_id.strip()),
         }
         
     except Exception as e:
         return {"error": f"Error processing question: {str(e)}"}
+
+
+# ──────────────────────────────────────────────────────
+# /welcome  — Proactive Memory-Based Greeting Endpoint
+# ──────────────────────────────────────────────────────
+
+@app.post("/welcome")
+async def welcome_user(
+    user_id: str = Form(...),
+):
+    """
+    Stateful Memory — Proactive Greeting Agent
+
+    When a student logs in or opens AskGillu, the frontend calls this endpoint
+    with their user_id.  AskGillu retrieves the student's memory vectors,
+    synthesises a personalised welcome message highlighting recent topics and
+    surfaces any documents that may have been updated since their last visit.
+
+    Returns
+    -------
+    message      : str   — personalised LLM-generated greeting
+    last_seen    : str   — ISO timestamp of their most recent session
+    recent_topics: list  — short phrases from last known queries
+    memory_count : int   — total persisted memory vectors for this student
+    first_visit  : bool  — True when the student has no prior memory
+    """
+    if not user_id or not user_id.strip():
+        raise HTTPException(status_code=400, detail="user_id is required.")
+
+    uid = user_id.strip()
+
+    try:
+        # ── Pull the memory summary ──
+        memory_summary = vector_manager.get_proactive_suggestion(uid)
+        recent_topics: List[str] = memory_summary.get("recent_topics", [])
+        last_seen: Optional[str] = memory_summary.get("last_seen")
+        memory_count: int = memory_summary.get("memory_count", 0)
+        first_visit = memory_count == 0
+
+        if first_visit:
+            # No memory yet — generic warm welcome
+            return {
+                "message": (
+                    f"Welcome to AskGillu 2.0! I am the official AI assistant for SRMU. "
+                    f"Feel free to ask me anything about admissions, fees, syllabus, "
+                    f"academic policies, or campus life."
+                ),
+                "last_seen": None,
+                "recent_topics": [],
+                "memory_count": 0,
+                "first_visit": True,
+            }
+
+        # ── Build a personalised greeting via LLM ──
+        topics_str = ", ".join(f'"{t}"' for t in recent_topics[:5])
+
+        greeting_prompt = f"""You are AskGillu, SRMU's friendly AI assistant.
+
+A returning student has just opened the chat.  Based on their recent questions
+({topics_str}), write a warm, concise welcome-back message (2-3 sentences).
+
+Rules:
+- Be friendly and personal.  Reference their recent topics naturally.
+- Do NOT invent any university information.  Do NOT mention fees, dates, or
+  policies unless the student already asked about them.
+- End with one open-ended follow-up question or helpful suggestion.
+
+Write only the message, nothing else."""
+
+        llm = ChatGroq(
+            model="llama-3.3-70b-versatile",
+            temperature=0.5,          # slight creativity for greetings
+            groq_api_key=GROQ_API_KEY,
+            max_tokens=200,
+        )
+
+        greeting_response = llm.invoke(greeting_prompt)
+        greeting_text = greeting_response.content.strip()
+
+        return {
+            "message": greeting_text,
+            "last_seen": last_seen,
+            "recent_topics": recent_topics,
+            "memory_count": memory_count,
+            "first_visit": False,
+        }
+
+    except Exception as exc:
+        print(f"[WELCOME] Error generating welcome for user='{uid}': {exc}")
+        return {
+            "message": "Welcome back to AskGillu 2.0! How can I help you today?",
+            "last_seen": None,
+            "recent_topics": [],
+            "memory_count": 0,
+            "first_visit": False,
+        }
 
 # Web Scraping Endpoints
 
@@ -1036,7 +1370,7 @@ async def upload_document(
     title: str = Form(None),
     category: str = Form("uploaded")
 ):
-    """Upload and add a new document to the vector database"""
+    """Upload and add a new document to both FAISS and Qdrant vector databases"""
     try:
         # Check file type
         if not file.filename.lower().endswith('.pdf'):
@@ -1064,30 +1398,70 @@ async def upload_document(
             content = await file.read()
             buffer.write(content)
         
-        # Add to vector database using advanced parsing
-        success = vector_manager.add_pdf(file_path)
-        
-        if success:
-            # Get updated status
-            status = vector_manager.get_status()
+        # Parse PDF
+        raw_text, parsing_metadata = vector_manager.parse_pdf_advanced(file_path, method="hybrid")
+        if not raw_text.strip():
+            os.remove(file_path)
+            return {
+                "success": False,
+                "message": f"No text content found in {file.filename}"
+            }
             
+        # Split text into chunks
+        text_splitter = RecursiveCharacterTextSplitter(
+            separators=["\n\n", "\n", ". ", "! ", "? ", " ", ""],
+            chunk_size=8000,
+            chunk_overlap=1200,
+            length_function=len
+        )
+        texts = text_splitter.split_text(raw_text)
+        
+        # Create metadata
+        metadatas = [{
+            "source": file.filename,
+            "title": title or file.filename,
+            "category": category,
+            "chunk_id": i,
+            "processed_at": datetime.now().isoformat()
+        } for i in range(len(texts))]
+        
+        # We want to add it to both Qdrant and FAISS
+        current_db = vector_manager.db_type
+        other_db = "faiss" if current_db == "qdrant" else "qdrant"
+        
+        # Add to current database
+        success1 = vector_manager.add_documents(texts, metadatas)
+        
+        # Add to other database
+        vector_manager.switch_database(other_db)
+        success2 = vector_manager.add_documents(texts, metadatas)
+        
+        # Switch back to original database
+        vector_manager.switch_database(current_db)
+        
+        if success1 or success2:
+            status = vector_manager.get_status()
             return {
                 "success": True,
-                "message": f"Successfully uploaded and processed {file.filename}",
+                "message": f"Successfully uploaded and processed {file.filename} to both FAISS and Qdrant",
                 "file_name": file.filename,
                 "file_size": len(content),
+                "chunks_created": len(texts),
                 "database_type": vector_manager.db_type.upper(),
                 "total_documents": status.get('documents_count', 'Unknown')
             }
         else:
-            # Remove the file if adding to vector store failed
+            # Remove the file if adding to both vector stores failed
             os.remove(file_path)
             return {
                 "success": False,
-                "message": f"Failed to process {file.filename}. File was not saved."
+                "message": f"Failed to add {file.filename} to vector stores. File was not saved."
             }
             
     except Exception as e:
+        # Cleanup file if exists on error
+        if 'file_path' in locals() and os.path.exists(file_path):
+            os.remove(file_path)
         return {
             "success": False,
             "message": f"Error uploading document: {str(e)}"
@@ -1149,28 +1523,29 @@ async def add_text_document(
 @app.post("/api/feedback")
 async def submit_feedback(
     question: str = Form(...),
-    answer_id: str = Form(None),
     rating: int = Form(...),  # 1-5 scale
-    feedback_type: str = Form("rating"),  # rating, correction, suggestion
-    comment: str = Form(""),
-    was_helpful: bool = Form(True)
+    feedback_type: str = Form("relevant"),  # relevant, irrelevant, partially_relevant, etc.
+    missing_info: str = Form(""),
+    suggested_improvement: str = Form(""),
+    user_session: str = Form(None)
 ):
     """Submit user feedback for query responses"""
     try:
-        feedback_result = vector_manager.submit_feedback(
-            question=question,
-            answer_id=answer_id,
-            rating=rating,
+        feedback_id = vector_manager.record_feedback(
+            query=question,
+            retrieved_docs=[],  # We skip docs since it's just feedback text
             feedback_type=feedback_type,
-            comment=comment,
-            was_helpful=was_helpful
+            relevance_score=rating / 5.0,
+            response_quality=rating / 5.0,
+            missing_info=missing_info if missing_info else None,
+            suggested_improvement=suggested_improvement if suggested_improvement else None,
+            user_session=user_session
         )
         
         return {
             "success": True,
             "message": "Feedback submitted successfully",
-            "feedback_id": feedback_result.get("feedback_id"),
-            "total_feedback_count": feedback_result.get("total_count", 0)
+            "feedback_id": feedback_id
         }
         
     except Exception as e:
@@ -1296,3 +1671,239 @@ async def configure_advanced_rag(
             "success": False,
             "message": f"Error configuring advanced RAG: {str(e)}"
         }
+
+
+# ════════════════════════════════════════════════════════════════
+# ASKGILLU 2.0 — NEW ENDPOINTS
+# ════════════════════════════════════════════════════════════════
+
+# ── 1. MULTIMODAL: Image + Text ──────────────────────────────────
+
+@app.post("/ask-image")
+async def ask_with_image(
+    image: UploadFile = File(...),
+    question: str = Form("What does this image show?"),
+    system_prompt: str = Form("You are AskGillu, SRMU's AI assistant. Analyse the attached image and answer the student's question."),
+    language: str = Form("en"),
+):
+    """
+    Multimodal endpoint: accept an image upload + text question.
+    Uses Groq vision model to understand the image, then optionally
+    augments with RAG context.
+    """
+    try:
+        file_bytes = await image.read()
+        if not file_bytes:
+            return {"error": "Empty image file received."}
+
+        llm = ChatGroq(
+            model="llama-3.2-11b-vision-preview",
+            temperature=0.2,
+            groq_api_key=GROQ_API_KEY,
+        )
+
+        # Translate question if Hindi
+        processed_q, was_translated = translate_query_to_english(question, language)
+
+        # Process image through vision pipeline
+        result = process_image_for_rag(file_bytes, processed_q, llm)
+
+        if not result["success"]:
+            return {"error": f"Vision processing failed: {result['error']}"}
+
+        answer_text = result["extracted_text"]
+
+        # Translate back to Hindi if needed
+        if language == "hi" or was_translated:
+            answer_text = translate_response_to_hindi(answer_text)
+
+        return {
+            "answer": answer_text,
+            "sources_used": {"documents": False, "web_search": False, "image": True},
+            "advanced_rag_features": {"documents_found": 0, "cache_hit": False},
+            "language": language,
+            "translated": was_translated,
+            "vision_processed": True,
+        }
+    except Exception as e:
+        return {"error": f"Error processing image: {str(e)}"}
+
+
+# ── 2. AGENTIC RAG ───────────────────────────────────────────────
+
+@app.post("/ask-agentic")
+async def ask_agentic(
+    question: str = Form(...),
+    system_prompt: str = Form("You are AskGillu, SRMU's agentic AI assistant. Answer ONLY using provided context and tool results. Never fabricate information."),
+    language: str = Form("en"),
+):
+    """
+    Agentic RAG endpoint with anti-hallucination guardrails:
+    1. Classify intent via LLM
+    2. If tool matched → execute tool → include result in response
+    3. Else → fall back to standard RAG pipeline
+    """
+    try:
+        llm = ChatGroq(
+            model="llama-3.3-70b-versatile",
+            temperature=0.0,
+            groq_api_key=GROQ_API_KEY,
+        )
+
+        # Translate query if Hindi
+        processed_q, was_translated = translate_query_to_english(question, language)
+
+        # Classify intent
+        intent_result = classify_intent(processed_q, llm)
+        intent = intent_result.get("intent", "rag_only")
+        args   = intent_result.get("args", {})
+
+        agent_action = None
+        tool_context = ""
+
+        if intent != "rag_only" and intent in TOOL_REGISTRY:
+            # Execute the tool
+            tool_result = execute_tool(intent, args)
+            if tool_result:
+                agent_action = {
+                    "tool_used": intent,
+                    "args": args,
+                    "result": tool_result.get("message", ""),
+                }
+                tool_context = f"\n\nTOOL RESULT ({intent}):\n{tool_result.get('message', '')}"
+
+        # Get RAG context
+        context, search_metadata = combine_sources(processed_q, system_prompt, use_web_search=False)
+
+        # Context gating for non-tool queries
+        docs_found = search_metadata.get("documents_found", 0)
+        if intent == "rag_only" and docs_found == 0:
+            no_info_msg = (
+                "I'm sorry, I don't have enough information in my university documents to answer that question. "
+                "Please try rephrasing your question, or ask something related to SRMU's academics, admissions, "
+                "fees, placements, campus life, or policies."
+            )
+            if language == "hi" or was_translated:
+                no_info_msg = translate_response_to_hindi(no_info_msg)
+            return {
+                "answer": no_info_msg,
+                "agent_action": None,
+                "sources_used": {"documents": False, "web_search": False, "tool": False},
+                "advanced_rag_features": {"documents_found": 0, "cache_hit": False, "context_gated": True},
+                "intent": intent,
+                "language": language,
+                "translated": was_translated,
+            }
+
+        full_prompt = f"""You are AskGillu, SRMU's agentic AI assistant.
+
+{system_prompt}
+
+IMPORTANT RULES — you MUST follow these:
+1. Answer ONLY using the CONTEXT and TOOL RESULTS provided below.
+2. NEVER fabricate facts, statistics, names, dates, fees, or any specific information.
+3. If a tool was used, summarise the action taken and the result clearly.
+4. If the context does not contain the answer, say: "I don't have enough information to answer that."
+
+--- CONTEXT START ---
+{context}{tool_context}
+--- CONTEXT END ---
+
+User question: {processed_q}
+
+Answer strictly from the context and tool results above. Use markdown formatting."""
+        response = llm.invoke(full_prompt)
+        answer_text = response.content
+
+        if language == "hi" or was_translated:
+            answer_text = translate_response_to_hindi(answer_text)
+
+        return {
+            "answer": answer_text,
+            "agent_action": agent_action,
+            "sources_used": {
+                "documents": docs_found > 0,
+                "web_search": False,
+                "tool": agent_action is not None,
+            },
+            "advanced_rag_features": {
+                "documents_found": docs_found,
+                "cache_hit": search_metadata.get("cache_hit", False),
+            },
+            "intent": intent,
+            "language": language,
+            "translated": was_translated,
+        }
+    except Exception as e:
+        return {"error": f"Error in agentic processing: {str(e)}"}
+
+
+# ── 3. REAL-TIME INGESTION ───────────────────────────────────────
+
+@app.post("/ingest")
+async def ingest_document(filename: str = Form(None)):
+    """
+    Hot-reload ingestion endpoint.
+    Called by the file watcher when a new PDF is detected.
+    If filename is provided, re-indexes that single file.
+    Otherwise re-indexes all documents in the allowed list.
+    """
+    try:
+        docs_dir = os.path.abspath(
+            os.path.join(os.path.dirname(__file__), "..", "docs")
+        )
+        all_texts, metadatas = [], []
+        text_splitter = RecursiveCharacterTextSplitter(
+            separators=["\n\n", "\n", ". ", " ", ""],
+            chunk_size=8000,
+            chunk_overlap=1200,
+            length_function=len,
+        )
+
+        files_to_process = [filename] if filename else ALLOWED_DOCUMENTS
+
+        processed, skipped = [], []
+        for doc_name in files_to_process:
+            file_path = os.path.join(docs_dir, doc_name)
+            if not os.path.exists(file_path):
+                skipped.append(doc_name)
+                continue
+            try:
+                raw_text, _ = vector_manager.parse_pdf_advanced(file_path, method="hybrid")
+                if raw_text.strip():
+                    chunks = text_splitter.split_text(raw_text)
+                    all_texts.extend(chunks)
+                    for _ in chunks:
+                        metadatas.append({
+                            "source": doc_name,
+                            "ingested_at": datetime.now().isoformat(),
+                            "chunk_type": "realtime_ingest",
+                        })
+                    processed.append(doc_name)
+            except Exception as ex:
+                skipped.append(doc_name)
+                print(f"[INGEST] Error processing {doc_name}: {ex}")
+
+        if all_texts:
+            success = vector_manager.add_documents(all_texts, metadatas)
+            return {
+                "success": success,
+                "message": f"Ingested {len(processed)} file(s), {len(all_texts)} chunks.",
+                "processed": processed,
+                "skipped": skipped,
+                "chunks_added": len(all_texts),
+            }
+        else:
+            return {
+                "success": False,
+                "message": "No text content found in specified files.",
+                "skipped": skipped,
+            }
+    except Exception as e:
+        return {"error": f"Ingestion error: {str(e)}"}
+
+
+@app.get("/watcher-status")
+async def watcher_status():
+    """Get the status of the real-time file watcher."""
+    return get_watcher_status()

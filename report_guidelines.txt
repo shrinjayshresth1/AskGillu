@@ -1,0 +1,261 @@
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+GUIDELINES FOR PREPARING PROJECT REPORT 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Project Formatting Guidelines 
+ 
+ 
+1. Type Style and Spacing: Same type style and font should be used throughout the 
+Project and should be justified. All printing should be single side. As per following 
+specifications: 
+ 
+Follow these rules strictly while writing report for final project 
+ 
+Font – Times New Roman  
+Chapter No.-14 Bold  
+Chapter Title – 16 Bold Uppercase 
+Heading – 14 Bold (1.1, 1.2 etc), Subheading 12 Bold (1.1.1, 1.2.2 etc)  
+Body Font Size – 12 
+Line Spacing – 1.5 lines 
+Margins – Top, Bottom & Right – 1 Inch each and Left – 1.5 Inch (Including Binding) 
+Page Size – Standard A4 
+ 
+` 2.   There should be uniformity in writing headings and sub-headings in all chapters 
+3.   Avoid underlines and colon i.e.: 
+4.   To indicate a figure, write below the figure and the format should be Fig.1.5 
+5.   To indicate a table, write above the table and the format should be Table 1.5 
+6.   All the figure captions and table captions should be 12 size, bold and title case 
+7.   All the figures and tables should be mentioned/referred/explained in the adjoining   
+paragraphs 
+ 
+Parts of Project: 
+ 
+TITLE PAGE 
+DECLARATION 
+PROJECT PROGRESS REPORT 
+ACKNOWLEDGEMENT 
+TABLE OF CONTENTS 
+LIST OF FIGURES 
+LIST OF TABLES 
+ 
+CHAPTERS…… 
+ 
+REFERENCES  
+Note:  
+ Title page should without page number 
+ From certificate till list of tabl es all page numbers shou ld be  in 
+Romans(i, ii…. etc).  
+ Page number 1 should start from Chapter 1. 
+ 
+ 
+DECLARATION 
+ 
+ 
+ 
+ 
+We, Name1 (Roll Number1) and Name2 (Roll Number2) students of Bachelor 
+of Technology, Computer Science & Engineering department at  Shri 
+Ramswaroop Memorial University, Lucknow  hereby declare that the work  
+presented in this project titled “PROJECT NAME” is outcome of our own 
+work, is bonafide, correct to the best of our knowledge and this work has been 
+carried out taking care engineering ethics.    
+We have completely taken care in acknowledging the contribution of others in 
+this academic work. We  further declare that in case of any violation of 
+intellectual property rights or copyr ights found at any stage, we as the 
+candidates will be solely responsible for the same. 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Date:          Signature 
+Place:                                     Name1 (Roll Number) 
+ 
+                     Signature 
+      Name2 (Roll Number) 
+  
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ACKNOWLEDGEMENT 
+ 
+ 
+ 
+ 
+The present work will remain incomplete unless we express our feelings of 
+gratitude towards a number of persons who delightfully co -operated with us in 
+the process of this work. 
+First of all we  would like to thank our ……………………… for his 
+encouragement and support during the course of my study. I extend my hearty 
+and sincere gratitude to my project guide, Mr./Ms……., for her valuable 
+direction, suggestions and exquisite guidance with ever enthusiastic 
+encouragement ever since the commencement of this project.  
+This project wo uld n ot have taken  shape, without the guidance provided by 
+project co ordinators……………………., w ho helped in o ur project and 
+resolved all the technical as well as other problems related to the project and, 
+for always providing us w ith a helping hand whenever we faced a ny 
+bottlenecks, inspire of being quite busy with their hectic schedules. 
+ 
+ 
+ 
+ 
+ 
+ 
+Note: This is Sample Acknowledgement. Student will have to write acknowledgement in 
+their own words. 
+TABLE OF CONTENTS 
+ 
+ 
+CHAPTERS                                                                                                                    PAGE NO. 
+ 
+ 
+DECLARATION                       
+PROJECT PROGRESE REPORT                                                                      i     
+ACKNOWLEDGEMENT                                                                                           ii                                                                                                                                                        
+LIST OF FIGURES                                                                                                        iii                                                                                                        
+LIST OF TABLES                                                                                                          i v                                                                                                       
+ 
+CHAPTER I: INTRODUCTION                                                                                               1-5 
+1.1 PROJECT NAME (About the project)       1 
+1.2 PREFACE  (Background About the project)      2 
+1.3 DEFINITION OF PROJECT TECHNOLOGY                                          4 
+ 
+CHAPTER II: REQUIREMENTS ANALYSIS AND FEASIBILITY STUDY                   6-15 
+2.1 REQUIREMENTS ANALYSIS                             6 
+2.1.1 INFORMATION GATHERING                                                                             6 
+2.1.2 FUNCTIONAL REQUIREMENTS                                                                        7 
+2.1.3 NON FUNCTIONAL REQUIREMENTS                                                SO ON…. 
+2.1.3.1 HARDWARE REQUIREMENTS                                                        
+2.1.3.2 SOFTWARE REQUIREMENTS 
+2.1.3.3 USABILITY REQUIREMENTS 
+2.1.3.4 SECURITY REQUIREMENTS 
+2.2 FEASIBILITY STUDY 
+2.2.1 TECHNICAL FEASIBILITY 
+2.2.2 OPERATIONAL FEASIBILITY 
+2.2.3 ECONOMICAL FEASIBILITY 
+ 
+CHAPTER III: SYSTEM ANALYSIS AND DESIGN       
+3.1 SYSTEM ANALYSIS (WITH DESCRIPTION) 
+3.2 SYSTEM DESIGN 
+3.2.1 USE CASE DIAGRAM (WITH DESCRIPTION) 
+3.2.2 E-R DIAGRAM (WITH DESCRIPTION) 
+3.2.3 DATA FLOW DIAGRAM (WITH DESCRIPTION) 
+3.2.4 CLASS DIAGRAM (AS PER THE REQUIREMENT OF THE PROJECT & 
+WITH DESCRIPTION) 
+3.2.5 SNAP SHOTS  
+CHAPTER IV: TESTING
+4.1 ABOUT THE TECHNOLOGY USED 
+4.2 TESTING 
+4.2.1 UNIT TESTING 
+4.2.2 INTEGRATION TESTING 
+4.2.3 SYSTEM TESTING 
+ 
+CHAPTER V: ADVANTAGES AND LIMITATIONS OF THE DEVELOPED SYSTEM 
+5.1 ADVANTAGES OF DEVELOPED SYSTEM 
+5.2 LIMITATIONS OF DEVELOPED SYSTEM 
+ 
+CHAPTER VI: CONCLUSION AND SUGGESTIONS FOR FURTHER WORK 
+6.1 CONCLUSION 
+6.2 SUGGESTIONS FOR FURTHER WORK 
+ 
+REFERENCES 
+ 
+…........................................................................................................................................................ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+References Format:   
+1. http://www.dsv.su.se/jpalme/Instructions-Project.html (Chapter Structure) 
+2. http://www.rpi.edu/dept/grad/docs/ProjectGuide/manual.html (Documents 
+required) 
+3.  http://www.cs.fit.edu/wds/guides/howto/ (An Outline For Each Chapter) 
+4.  http://www.sce.carleton.ca/faculty/chinneck/Project.html (How to Organize your 
+Project) 
+ 
+Few examples to how to write references: 
+ 
+1. S. Grinstein, J.Huth, J.Schopf. “Resource Predictors in HEP Applic ations”. 
+Computing in High Energy Physics,Interlaken, Switzerland, Sep. 2004. pp. 69. 
+2. R. Braun, H. Siegel, N. Beck, L. Boloni, M. Maheswaran, A. Reuther, J. Robertson, 
+M. Theys, B. Yao, D. Hensgen and R. Freund, “A Comparison of Eleven Static 
+Heuristics for M apping a Class  of Independent Tasks onto Heterogeneous 
+Distributed Computing Systems”, J. of Parallel and Distributed Computing, vol.61, 
+No. 6, pp.810-837, 2001. 

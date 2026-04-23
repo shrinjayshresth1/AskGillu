@@ -1,208 +1,67 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import ReactMarkdown from 'react-markdown';
-import { 
-  MessageCircle, 
-  Settings, 
-  Send, 
-  CheckCircle, 
-  XCircle, 
-  Clock,
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import axios from "axios";
+import {
+  Send,
+  Settings,
+  Globe,
   ChevronDown,
   ChevronUp,
-  Lightbulb,
-  Globe
-} from 'lucide-react';
-import { startBackendIfNeeded } from './utils/backendUtils';
-import HomePage from './components/HomePage';
-import VectorDatabaseToggle from './components/VectorDatabaseToggle';
-import './components/HomePage.css';
+  Paperclip,
+  X,
+  Zap,
+  ArrowLeft,
+  Trash2,
+} from "lucide-react";
+import { startBackendIfNeeded } from "./utils/backendUtils";
+import HomePage from "./components/HomePage";
+import ChatMessage from "./components/ChatMessage";
+import VectorDatabaseToggle from "./components/VectorDatabaseToggle";
+import "./components/HomePage.css";
 
-const API_BASE_URL = 'http://localhost:8000';
+import API_BASE_URL from "./config";
 
 const PROMPT_TEMPLATES = {
-  "Default": `You are ASK_GILLU, the official AI assistant for Shri Ramswaroop Memorial University (SRMU). Your purpose is to provide accurate, helpful, and contextually relevant information to SRMU students by leveraging the university's knowledge base.
-
-## PRIMARY FUNCTIONS:
-1. Answer academic queries using the document provided in the database. Do not answer anything from your own knowledge.
-2. Provide guidance on university procedures, policies, and administrative processes
-3. Offer information about campus facilities, events, and student services
-4. Assist with general knowledge questions relevant to students' fields of study
-5. Help troubleshoot common academic and administrative issues
-
-## PERSONALITY TRAITS:
-- Friendly and approachable, using conversational language appropriate for university students
-- Patient with repeated or basic questions
-- Academically rigorous, providing accurate information with appropriate citations
-- Encouraging and supportive of student learning and growth
-- Professional but warm, representing the university's values
-
-## RESPONSE GUIDELINES:
-- **Format your responses using Markdown** with proper headings, bullet points, and formatting
-- When answering questions, first check available university-specific information before providing general knowledge
-- Clearly distinguish between university-specific information and general advice
-- Include relevant references to specific SRMU resources, departments, or personnel when applicable
-- When uncertain about university-specific details, acknowledge limitations and suggest official channels for verification
-- For complex questions, break down responses into clear, manageable steps using numbered lists
-- Use examples relevant to university life and academic subjects at SRMU
-- If a question falls outside your knowledge base, suggest appropriate university resources or departments
-
-## LIMITATIONS TO ACKNOWLEDGE:
-- Cannot access real-time information about individual student records or accounts
-- Cannot submit assignments or take exams on behalf of students
-- Cannot provide unauthorized access to proprietary academic content
-- Must refer students to appropriate counseling services for personal crises or mental health concerns
-
-**Always format your responses with proper headings (#, ##), bullet points (-), numbered lists (1., 2.), and emphasis (**bold**) for better readability.**
-
-You represent Shri Ramswaroop Memorial University and should embody its educational mission and values in all interactions.`,
-
-  "Professional": `You are ASK_GILLU, the official AI assistant for Shri Ramswaroop Memorial University (SRMU). Your purpose is to provide accurate, helpful, and contextually relevant information to SRMU students by leveraging the university's knowledge base.
-
-PRIMARY FUNCTIONS:
-1. Answer academic queries using the document provided in the database. Do not answer anything from your own knowledge.
-2. Provide guidance on university procedures, policies, and administrative processes
-3. Offer information about campus facilities, events, and student services
-4. Assist with general knowledge questions relevant to students' fields of study
-5. Help troubleshoot common academic and administrative issues
-
-RESPONSE STYLE - PROFESSIONAL:
-- Use formal, professional language throughout all responses
-- Provide detailed, well-structured answers with clear organization
-- Include relevant examples and case studies when applicable
-- Maintain a consultative tone that reflects expertise and authority
-- Use proper academic and business terminology
-- Structure responses with clear headings and logical flow
-
-PERSONALITY TRAITS:
-- Professional and authoritative while remaining approachable
-- Academically rigorous, providing accurate information with appropriate citations
-- Encouraging and supportive of student learning and growth
-- Representing the university's values with dignity and professionalism
-
-You represent Shri Ramswaroop Memorial University and should embody its educational mission and values in all interactions.`,
-
-  "Casual": `You are ASK_GILLU, the official AI assistant for Shri Ramswaroop Memorial University (SRMU). Your purpose is to provide accurate, helpful, and contextually relevant information to SRMU students by leveraging the university's knowledge base.
-
-PRIMARY FUNCTIONS:
-1. Answer academic queries using the document provided in the database. Do not answer anything from your own knowledge.
-2. Provide guidance on university procedures, policies, and administrative processes
-3. Offer information about campus facilities, events, and student services
-4. Assist with general knowledge questions relevant to students' fields of study
-5. Help troubleshoot common academic and administrative issues
-
-RESPONSE STYLE - CASUAL & FRIENDLY:
-- Use conversational, easy-to-understand language
-- Be engaging and relatable in your communication style
-- Use simple language that any student can understand
-- Include friendly expressions and encouraging words
-- Make complex topics feel approachable and less intimidating
-- Use analogies and everyday examples to explain concepts
-
-PERSONALITY TRAITS:
-- Super friendly and approachable, like talking to a helpful friend
-- Patient with repeated or basic questions
-- Encouraging and supportive of student learning and growth
-- Warm and welcoming, representing the university's caring values
-
-You represent Shri Ramswaroop Memorial University and should embody its educational mission and values in all interactions.`,
-
-  "Academic": `You are ASK_GILLU, the official AI assistant for Shri Ramswaroop Memorial University (SRMU). Your purpose is to provide accurate, helpful, and contextually relevant information to SRMU students by leveraging the university's knowledge base.
-
-PRIMARY FUNCTIONS:
-1. Answer academic queries using the document provided in the database. Do not answer anything from your own knowledge.
-2. Provide guidance on university procedures, policies, and administrative processes
-3. Offer information about campus facilities, events, and student services
-4. Assist with general knowledge questions relevant to students' fields of study
-5. Help troubleshoot common academic and administrative issues
-
-RESPONSE STYLE - ACADEMIC RESEARCHER:
-- Provide scholarly, detailed responses with proper analysis
-- Reference specific parts of the context when making points
-- Use academic language and proper citations
-- Include theoretical frameworks and research perspectives
-- Analyze information critically and present multiple viewpoints
-- Support statements with evidence from the provided documents
-- Structure responses like academic papers with clear arguments
-
-PERSONALITY TRAITS:
-- Scholarly and intellectually rigorous
-- Analytically minded with attention to detail
-- Encouraging of critical thinking and academic growth
-- Professional yet accessible to students at all levels
-
-You represent Shri Ramswaroop Memorial University and should embody its educational mission and values in all interactions.`,
-
-  "Bullet Points": `You are ASK_GILLU, the official AI assistant for Shri Ramswaroop Memorial University (SRMU). Your purpose is to provide accurate, helpful, and contextually relevant information to SRMU students by leveraging the university's knowledge base.
-
-## PRIMARY FUNCTIONS:
-1. Answer academic queries using the document provided in the database. Do not answer anything from your own knowledge.
-2. Provide guidance on university procedures, policies, and administrative processes
-3. Offer information about campus facilities, events, and student services
-4. Assist with general knowledge questions relevant to students' fields of study
-5. Help troubleshoot common academic and administrative issues
-
-## RESPONSE STYLE - BULLET POINTS FORMAT:
-- **ALWAYS format your answers using Markdown bullet points and headings**
-- Be direct and to the point while covering all important aspects
-- Use clear, concise language with proper formatting
-- Organize information in logical bullet point structure with headings
-- Use sub-bullets (nested lists) for detailed breakdowns when needed
-- Make information easy to scan and digest quickly using **bold** for emphasis
-- Prioritize the most important information first
-- Use numbered lists (1., 2., 3.) for step-by-step processes
-- Include headings (## Heading) to organize content sections
-
-## PERSONALITY TRAITS:
-- Efficient and organized in communication
-- Clear and concise while remaining helpful
-- Supportive of student learning through well-structured information
-- Professional and systematic in approach
-
-**Always use proper Markdown formatting: headings (##), bullet points (-), numbered lists (1.), bold text (**bold**), and organize content for maximum readability.**
-
-You represent Shri Ramswaroop Memorial University and should embody its educational mission and values in all interactions.`,
-
-  "Expert": `You are ASK_GILLU, the official AI assistant for Shri Ramswaroop Memorial University (SRMU). Your purpose is to provide accurate, helpful, and contextually relevant information to SRMU students by leveraging the university's knowledge base.
-
-PRIMARY FUNCTIONS:
-1. Answer academic queries using the document provided in the database. Do not answer anything from your own knowledge.
-2. Provide guidance on university procedures, policies, and administrative processes
-3. Offer information about campus facilities, events, and student services
-4. Assist with general knowledge questions relevant to students' fields of study
-5. Help troubleshoot common academic and administrative issues
-
-RESPONSE STYLE - SUBJECT MATTER EXPERT:
-- Provide authoritative, comprehensive answers with deep expertise
-- Include technical details when relevant and explain complex concepts clearly
-- Demonstrate mastery of the subject matter
-- Offer insights that go beyond basic information
-- Explain the 'why' behind procedures and policies
-- Provide context and background information
-- Use precise terminology while ensuring clarity
-
-PERSONALITY TRAITS:
-- Authoritative yet approachable expert
-- Comprehensive in knowledge sharing
-- Patient in explaining complex concepts
-- Encouraging of deeper learning and understanding
-- Professional representative of university expertise
-
-You represent Shri Ramswaroop Memorial University and should embody its educational mission and values in all interactions.`
+  Default: `You are AskGillu, the official AI assistant for Shri Ramswaroop Memorial University (SRMU). You MUST answer ONLY using the provided context. If the context does not contain enough information to answer, say "I don't have enough information in my documents to answer that." Do NOT make up facts, statistics, names, dates, or any information not explicitly present in the context. Be friendly, accurate, and use markdown formatting.`,
+  Professional: `You are AskGillu, SRMU's official AI assistant. Use formal, professional language with clear structure and headings. Answer ONLY from the provided context — do NOT use external knowledge or make up any information. If the context is insufficient, clearly state that you don't have the information.`,
+  Casual: `You are AskGillu, SRMU's friendly AI assistant. Use conversational, easy-to-understand language. Answer ONLY from the provided context. If you can't find the answer in the context, be honest and say so — never make things up. Keep answers clear and encouraging.`,
+  Academic: `You are AskGillu, SRMU's academic AI assistant. Provide scholarly, detailed responses referencing specific sections from the provided context only. Do NOT fabricate any facts, citations, or statistics. If the context lacks information, state explicitly what is missing.`,
+  "Bullet Points": `You are AskGillu, SRMU's AI assistant. ALWAYS format responses in Markdown bullet points and numbered lists. Use bold for key terms. Answer ONLY from the provided context. NEVER fabricate information — if the answer isn't in the context, say so clearly.`,
 };
 
-function App() {
-  const [currentView, setCurrentView] = useState('home');
-  const [question, setQuestion] = useState('');
-  const [answer, setAnswer] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [status, setStatus] = useState({ status: 'loading', message: 'Checking system status...' });
-  const [isPromptExpanded, setIsPromptExpanded] = useState(false);
-  const [selectedTemplate, setSelectedTemplate] = useState('Default');
-  const [customPrompt, setCustomPrompt] = useState(PROMPT_TEMPLATES['Default']);
-  const [useWebSearch, setUseWebSearch] = useState(false);
+const SUGGESTION_QUERIES = [
+  "What are the hostel fee details?",
+  "Tell me about the MBA program",
+  "What are the exam policies?",
+  "How do I apply for placement?",
+];
 
+function App() {
+  const [currentView, setCurrentView] = useState("home");
+  const [messages, setMessages] = useState([]);
+  const [inputText, setInputText] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState({ status: "loading", message: "Checking…" });
+  const [language, setLanguage] = useState("en"); // "en" | "hi"
+  const [agenticMode, setAgenticMode] = useState(false);
+  const [useWebSearch, setUseWebSearch] = useState(false);
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState("Default");
+  const [customPrompt, setCustomPrompt] = useState(PROMPT_TEMPLATES["Default"]);
+
+  const messagesEndRef = useRef(null);
+  const textareaRef = useRef(null);
+  const fileInputRef = useRef(null);
+
+  /* ── Scroll to bottom ── */
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, []);
+
+  useEffect(() => { scrollToBottom(); }, [messages, scrollToBottom]);
+
+  /* ── System status poll ── */
   useEffect(() => {
     checkSystemStatus();
   }, []);
@@ -212,302 +71,439 @@ function App() {
   }, [selectedTemplate]);
 
   const checkSystemStatus = async () => {
-    console.log('Checking system status at:', `${API_BASE_URL}/status`);
     try {
-      const response = await axios.get(`${API_BASE_URL}/status`, { timeout: 30000 });
-      console.log('Backend response:', response.data);
-      setStatus(response.data);
-    } catch (error) {
-      console.error('Error connecting to backend:', error);
-      console.error('Error type:', error.code);
-      console.error('Error message:', error.message);
-      
-      // Check if backend needs to be started
-      const backendStatus = await startBackendIfNeeded();
-      
-      if (backendStatus.needsManualStart) {
-        setStatus({
-          status: 'not_ready',
-          message: 'Backend server is not running. Please start it manually.',
-          instructions: backendStatus.instructions
-        });
-      } else {
-        setStatus({
-          status: 'not_ready',
-          message: `Cannot connect to ASK_GILLU backend at ${API_BASE_URL}. Error: ${error.message}`
-        });
-      }
+      const res = await axios.get(`${API_BASE_URL}/status`, { timeout: 30000 });
+      setStatus(res.data);
+    } catch (err) {
+      const bs = await startBackendIfNeeded();
+      setStatus({
+        status: "not_ready",
+        message: bs.needsManualStart
+          ? "Backend not running. Start it manually."
+          : `Cannot connect: ${err.message}`,
+      });
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!question.trim() || loading || status.status !== 'ready') return;
+  /* ── Auto-resize textarea ── */
+  const handleTextareaInput = (e) => {
+    setInputText(e.target.value);
+    const ta = textareaRef.current;
+    if (ta) {
+      ta.style.height = "auto";
+      ta.style.height = Math.min(ta.scrollHeight, 120) + "px";
+    }
+  };
 
+  /* ── Image selection ── */
+  const handleImageSelect = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setImageFile(file);
+    const reader = new FileReader();
+    reader.onload = (ev) => setImagePreview(ev.target.result);
+    reader.readAsDataURL(file);
+  };
+
+  const clearImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  /* ── Submit ── */
+  const handleSubmit = async (e) => {
+    e?.preventDefault();
+    const trimmed = inputText.trim();
+    if ((!trimmed && !imageFile) || loading || status.status !== "ready") return;
+
+    const userMsg = {
+      role: "user",
+      content: trimmed || "(image attached)",
+      timestamp: new Date(),
+      imageUrl: imagePreview,
+    };
+    setMessages((prev) => [...prev, userMsg]);
+    setInputText("");
+    clearImage();
+    if (textareaRef.current) textareaRef.current.style.height = "auto";
+
+    // Typing indicator
+    const typingId = Date.now();
+    setMessages((prev) => [
+      ...prev,
+      { role: "ai", id: typingId, content: "", isTyping: true, timestamp: new Date() },
+    ]);
     setLoading(true);
-    setError('');
-    setAnswer('');
 
     try {
-      const formData = new FormData();
-      formData.append('question', question);
-      formData.append('system_prompt', customPrompt);
-      formData.append('use_web_search', useWebSearch);
+      let responseData;
 
-      const response = await axios.post(`${API_BASE_URL}/ask`, formData, {
-        timeout: 60000,
-        headers: {
-          'Content-Type': 'multipart/form-data',
+      if (imageFile && trimmed) {
+        /* ── Image + text ── */
+        const fd = new FormData();
+        fd.append("image", imageFile);
+        fd.append("question", trimmed);
+        fd.append("system_prompt", customPrompt);
+        fd.append("language", language);
+        const res = await axios.post(`${API_BASE_URL}/ask-image`, fd, {
+          timeout: 90000,
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        responseData = res.data;
+      } else if (agenticMode) {
+        /* ── Agentic mode ── */
+        const fd = new FormData();
+        fd.append("question", trimmed);
+        fd.append("system_prompt", customPrompt);
+        fd.append("language", language);
+        const res = await axios.post(`${API_BASE_URL}/ask-agentic`, fd, {
+          timeout: 90000,
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        responseData = res.data;
+      } else {
+        /* ── Standard RAG ── */
+        const fd = new FormData();
+        fd.append("question", trimmed);
+        fd.append("system_prompt", customPrompt);
+        fd.append("use_web_search", useWebSearch);
+        fd.append("language", language);
+        const res = await axios.post(`${API_BASE_URL}/ask`, fd, {
+          timeout: 90000,
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        responseData = res.data;
+      }
+
+      const su = responseData.sources_used || {};
+      const adv = responseData.advanced_rag_features || {};
+      const aiMsg = {
+        role: "ai",
+        content: responseData.error || responseData.answer || "No response received.",
+        timestamp: new Date(),
+        sources: {
+          docs:   (adv.documents_found || 0) > 0,
+          web:    su.web_search || false,
+          image:  !!imageFile,
+          tool:   !!(responseData.agent_action?.tool_used),
+          cached: adv.cache_hit || false,
         },
-      });
+        agentAction: responseData.agent_action || null,
+        originalQuestion: trimmed,
+      };
 
-      if (response.data.error) {
-        setError(response.data.error);
-      } else {
-        setAnswer(response.data.answer);
-      }
-    } catch (error) {
-      console.error('Error asking question:', error);
-      if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
-        setError('Request timed out. The question might be complex or the server is busy. Please try again.');
-      } else if (error.response?.data?.detail) {
-        setError(error.response.data.detail);
-      } else {
-        setError('Failed to get response. Please check your connection and try again.');
-      }
+      setMessages((prev) =>
+        prev.map((m) => (m.id === typingId ? aiMsg : m))
+      );
+    } catch (err) {
+      const errMsg = {
+        role: "ai",
+        content: err.code === "ECONNABORTED" || err.message.includes("timeout")
+          ? "⏱️ Request timed out. The server may be busy — please try again."
+          : err.response?.data?.detail || "❌ Failed to get a response. Please check your connection.",
+        timestamp: new Date(),
+        sources: {},
+      };
+      setMessages((prev) =>
+        prev.map((m) => (m.id === typingId ? errMsg : m))
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  const getStatusIcon = () => {
-    switch (status.status) {
-      case 'ready':
-        return <CheckCircle size={16} />;
-      case 'not_ready':
-        return <XCircle size={16} />;
-      default:
-        return <Clock size={16} />;
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit();
     }
   };
 
-  const getStatusClass = () => {
-    switch (status.status) {
-      case 'ready':
-        return 'status-ready';
-      case 'not_ready':
-        return 'status-error';
-      default:
-        return 'status-loading';
-    }
+  const handleSuggestion = (q) => {
+    setInputText(q);
+    textareaRef.current?.focus();
   };
 
-  const navigateToChat = () => {
-    setCurrentView('chat');
-  };
+  const clearChat = () => setMessages([]);
 
-  const navigateToHome = () => {
-    setCurrentView('home');
-  };
+  /* ── Status helpers ── */
+  const statusClass =
+    status.status === "ready" ? "ready" :
+    status.status === "not_ready" ? "error" : "loading";
 
-  if (currentView === 'home') {
-    return <HomePage onNavigateToChat={navigateToChat} />;
+  /* ── HOME ── */
+  if (currentView === "home") {
+    return <HomePage onNavigateToChat={() => setCurrentView("chat")} />;
   }
 
+  /* ── CHAT ── */
   return (
-    <div className="container" id="home">
-        <div className="glass-card">
-          <div className="header">
-            <button 
-              onClick={navigateToHome}
-              className="back-button"
-              style={{ 
-                position: 'absolute', 
-                top: '20px', 
-                left: '20px',
-                background: 'rgba(59, 130, 246, 0.1)',
-                border: '1px solid rgba(59, 130, 246, 0.3)',
-                borderRadius: '8px',
-                padding: '8px 16px',
-                color: '#3b82f6',
-                cursor: 'pointer',
-                fontSize: '0.9rem',
-                fontWeight: '500'
-              }}
-            >
-              ← Back to Home
-            </button>
-            <div className="logo-container">
-              <img 
-                src="/bot-icon-squirrel-90.png" 
-                alt="ASK_GILLU Logo" 
-                className="logo-image"
-              />
-              <h1>ASK_GILLU</h1>
-            </div>
-            <p>Your SRMU AI Assistant</p>
-            <p>Everything you need to know about SRMU, ANYTIME!</p>
-          
-            <div className={`status-indicator ${getStatusClass()}`}>
-              {getStatusIcon()}
-              <span>{status.message}</span>
-            </div>
-            
-            {status.status === 'ready' && (
-              <div>
-                <p className="help-text">
-                  📚 ASK_GILLU is pre-loaded with SRMU documents and ready to answer your questions!
-                </p>
-                {status.web_search_restricted && status.total_allowed_websites > 0 && (
-                  <p className="help-text" style={{ color: '#10b981', fontSize: '0.9rem' }}>
-                    🔒 Web search is restricted to {status.total_allowed_websites} trusted websites for reliable information
-                  </p>
-                )}
-                {!status.web_search_restricted && (
-                  <p className="help-text" style={{ color: '#f59e0b', fontSize: '0.9rem' }}>
-                    🌐 Web search is unrestricted (searches all websites)
-                  </p>
-                )}
-              </div>
-            )}
+    <div className="chat-root">
+      {/* Header */}
+      <header className="chat-header">
+        <div className="chat-header-brand">
+          <img src="/bot-icon-squirrel-90.png" alt="AskGillu" className="chat-logo" />
+          <span className="chat-brand-name">AskGillu</span>
+          <span className="version-badge">2.0</span>
+        </div>
+
+        <div className="chat-header-controls">
+          {/* Status dot */}
+          <div className="status-dot-wrap">
+            <div className={`status-dot ${statusClass}`} />
+            <span>
+              {status.status === "ready"
+                ? `${status.documents_count || "–"} docs`
+                : status.status === "loading" ? "Connecting…" : "Offline"}
+            </span>
           </div>
 
-          {/* Vector Database Toggle */}
-          <VectorDatabaseToggle />
+          {/* Language toggle */}
+          <div className="lang-toggle">
+            <button
+              className={`lang-btn ${language === "en" ? "active" : ""}`}
+              onClick={() => setLanguage("en")}
+            >EN</button>
+            <button
+              className={`lang-btn ${language === "hi" ? "active" : ""}`}
+              onClick={() => setLanguage("hi")}
+            >हिं</button>
+          </div>
 
-          <div className="expandable-section">
-            <div 
-              className="expandable-header"
-              onClick={() => setIsPromptExpanded(!isPromptExpanded)}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Settings size={20} />
-                <span>Customize AI Response Style</span>
+          {/* Agentic toggle */}
+          <label className="agent-toggle-wrap" title="Enable Agentic Mode">
+            <input
+              type="checkbox"
+              checked={agenticMode}
+              onChange={(e) => setAgenticMode(e.target.checked)}
+              disabled={loading}
+            />
+            <div className="agent-slider" />
+            <span>🤖 Agentic</span>
+          </label>
+
+          {/* Clear + Back */}
+          {messages.length > 0 && (
+            <button className="icon-btn back-btn" onClick={clearChat} title="Clear chat">
+              <Trash2 size={15} />
+            </button>
+          )}
+          <button className="back-btn" onClick={() => setCurrentView("home")}>
+            <ArrowLeft size={15} />
+            Home
+          </button>
+        </div>
+      </header>
+
+      {/* Messages */}
+      <div className="chat-messages">
+        <div className="messages-inner">
+          {messages.length === 0 && (
+            <div className="chat-empty">
+              <img src="/bot-icon-squirrel-90.png" alt="AskGillu" className="chat-empty-icon" />
+              <h2>
+                {language === "hi"
+                  ? "नमस्ते! मैं AskGillu हूँ 👋"
+                  : "Hi, I'm AskGillu 👋"}
+              </h2>
+              <p>
+                {language === "hi"
+                  ? "SRMU के बारे में कुछ भी पूछें — हिंदी या English में।"
+                  : "Ask me anything about SRMU — academics, campus life, policies & more."}
+              </p>
+              <div className="suggestion-chips">
+                {SUGGESTION_QUERIES.map((q, i) => (
+                  <button
+                    key={i}
+                    className="suggestion-chip"
+                    onClick={() => handleSuggestion(q)}
+                  >
+                    {q}
+                  </button>
+                ))}
               </div>
-              {isPromptExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
             </div>
-            
-            {isPromptExpanded && (
-              <div className="expandable-content">
-                <p style={{ marginBottom: '16px', color: '#6b7280' }}>
-                  Customize how ASK_GILLU should respond to your questions:
-                </p>
-                
-                <div className="form-group">
-                  <label className="form-label">Choose a response style:</label>
+          )}
+
+          {messages.map((msg, i) => (
+            <ChatMessage key={i} {...msg} />
+          ))}
+          <div ref={messagesEndRef} />
+        </div>
+      </div>
+
+      {/* Input Area */}
+      <div className="chat-input-wrap">
+        <div className="input-area-inner">
+          {/* Settings panel */}
+          <div className="settings-panel">
+            <button
+              className="settings-toggle-btn"
+              onClick={() => setSettingsOpen(!settingsOpen)}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <Settings size={14} />
+                <span>Response Style</span>
+                {selectedTemplate !== "Default" && (
+                  <span style={{
+                    fontSize: "0.7rem",
+                    padding: "1px 8px",
+                    background: "rgba(99,102,241,0.15)",
+                    color: "var(--accent-light)",
+                    borderRadius: 20,
+                  }}>{selectedTemplate}</span>
+                )}
+              </div>
+              {settingsOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </button>
+
+            {settingsOpen && (
+              <div className="settings-body">
+                {/* Vector DB toggle */}
+                <VectorDatabaseToggle />
+
+                <div className="settings-group">
+                  <label className="settings-label">Response Style</label>
                   <select
-                    className="form-select"
+                    className="settings-select"
                     value={selectedTemplate}
                     onChange={(e) => setSelectedTemplate(e.target.value)}
                   >
-                    {Object.keys(PROMPT_TEMPLATES).map((template) => (
-                      <option key={template} value={template}>
-                        {template}
-                      </option>
+                    {Object.keys(PROMPT_TEMPLATES).map((t) => (
+                      <option key={t} value={t}>{t}</option>
                     ))}
                   </select>
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label">System Prompt:</label>
+                <div className="settings-group">
+                  <label className="settings-label">System Prompt</label>
                   <textarea
-                    className="form-textarea"
+                    className="settings-textarea"
                     value={customPrompt}
                     onChange={(e) => setCustomPrompt(e.target.value)}
-                    placeholder="This prompt tells ASK_GILLU how to respond..."
+                    placeholder="Customize AI behaviour…"
                   />
-                  <p className="help-text">
-                    This prompt tells ASK_GILLU how to respond. You can modify it to get answers in your preferred style.
-                  </p>
                 </div>
               </div>
             )}
           </div>
-        </div>
 
-        {/* Question Form Section */}
-        <div className="glass-card">
-          <h2 style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <MessageCircle size={24} />
-            Ask ASK_GILLU
-          </h2>
-          
-          <div className="web-search-toggle" style={{ marginBottom: '16px' }}>
-            <label className="toggle-container">
+          {/* Web search toggle row */}
+          <div className="web-search-row">
+            <label className="mini-toggle" style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
               <input
                 type="checkbox"
                 checked={useWebSearch}
                 onChange={(e) => setUseWebSearch(e.target.checked)}
-                disabled={loading || status.status !== 'ready'}
+                disabled={loading || agenticMode}
               />
-              <span className="toggle-slider"></span>
-              <span className="toggle-label">
-                <Globe size={16} />
-                Include Web Search
-              </span>
+              <div className="mini-slider" />
+              <Globe size={14} style={{ color: "var(--text-secondary)" }} />
+              <span className="toggle-label-text">Web Search</span>
             </label>
-            <p className="toggle-description">
-              {useWebSearch 
-                ? (status.web_search_restricted 
-                    ? `🔒 Searching SRMU documents + ${status.total_allowed_websites || 'trusted'} verified websites for reliable answers`
-                    : "🌐 Searching both SRMU documents and the internet for comprehensive answers"
-                  )
-                : "📚 Searching only SRMU documents for university-specific information"
-              }
-            </p>
+            <span className="toggle-desc">
+              {agenticMode
+                ? "🤖 Agentic mode active — tool dispatch enabled"
+                : useWebSearch
+                  ? status.web_search_restricted
+                    ? `🔒 ${status.total_allowed_websites} trusted sites`
+                    : "🌐 Unrestricted web search"
+                  : "📚 Documents only"}
+            </span>
           </div>
-          
-          <form onSubmit={handleSubmit}>
-            <div className="input-group">
-              <input
-                type="text"
-                className="form-input"
-                placeholder="💭 Enter your question about SRMU..."
-                value={question}
-                onChange={(e) => setQuestion(e.target.value)}
-                disabled={loading || status.status !== 'ready'}
-              />
-              <button
-                type="submit"
-                className="submit-button"
-                disabled={loading || !question.trim() || status.status !== 'ready'}
-              >
-                {loading ? (
-                  <>
-                    <div className="loading-spinner"></div>
-                    Thinking...
-                  </>
-                ) : (
-                  <>
-                    <Send size={16} />
-                    Ask
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
 
-          {error && (
-            <div className="error-message">
-              ❌ {error}
-            </div>
-          )}
-
-          {answer && (
-            <div className="answer-section">
-              <div className="answer-content">
-                <h3>
-                  <Lightbulb size={20} />
-                  ASK_GILLU's Answer:
-                </h3>
-                <div className="answer-text">
-                  <ReactMarkdown>{answer}</ReactMarkdown>
-                </div>
+          {/* Image preview chip */}
+          {imagePreview && (
+            <div className="input-file-preview">
+              <div className="file-preview-chip">
+                <img src={imagePreview} alt="preview" />
+                <span>{imageFile?.name || "Image"}</span>
+                <button className="file-chip-remove" onClick={clearImage}>×</button>
               </div>
             </div>
           )}
+
+          {/* Input row */}
+          <form onSubmit={handleSubmit}>
+            <div className="input-row">
+              <textarea
+                ref={textareaRef}
+                className="chat-textarea"
+                rows={1}
+                placeholder={
+                  language === "hi"
+                    ? "SRMU के बारे में पूछें… (Shift+Enter for new line)"
+                    : "Ask about SRMU… (Shift+Enter for new line)"
+                }
+                value={inputText}
+                onChange={handleTextareaInput}
+                onKeyDown={handleKeyDown}
+                disabled={loading || status.status !== "ready"}
+              />
+
+              <div className="input-actions">
+                {/* Image attach */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*,.pdf"
+                  style={{ display: "none" }}
+                  onChange={handleImageSelect}
+                  disabled={loading}
+                />
+                <button
+                  type="button"
+                  className="icon-btn"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={loading || status.status !== "ready"}
+                  title="Attach image or PDF"
+                  style={{ color: imageFile ? "var(--accent-purple)" : undefined }}
+                >
+                  <Paperclip size={18} />
+                </button>
+
+                {/* Send */}
+                <button
+                  type="submit"
+                  className="send-btn"
+                  disabled={
+                    loading ||
+                    status.status !== "ready" ||
+                    (!inputText.trim() && !imageFile)
+                  }
+                  title="Send (Enter)"
+                >
+                  {loading ? (
+                    <span className="spinner" />
+                  ) : (
+                    <Send size={16} />
+                  )}
+                </button>
+              </div>
+            </div>
+          </form>
+
+          <div className="input-hint">
+            <span>Enter to send · Shift+Enter for new line</span>
+            <span className="hint-sep">·</span>
+            <span>AskGillu 2.0</span>
+            {agenticMode && (
+              <>
+                <span className="hint-sep">·</span>
+                <span style={{ color: "var(--accent-orange)" }}>🤖 Agentic</span>
+              </>
+            )}
+            {language === "hi" && (
+              <>
+                <span className="hint-sep">·</span>
+                <span style={{ color: "var(--accent-green)" }}>🌐 हिंदी</span>
+              </>
+            )}
+          </div>
         </div>
       </div>
+    </div>
   );
 }
 

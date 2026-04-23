@@ -21,6 +21,7 @@ from .hybrid_search import get_hybrid_retriever
 from .semantic_chunker import get_semantic_chunker
 from .response_cache import get_response_cache
 from .feedback_loop import get_feedback_loop, FeedbackType
+from .memory_manager import get_memory_manager, MemoryManager
 
 # Load environment variables
 load_dotenv()
@@ -72,6 +73,9 @@ class UnifiedVectorManager:
         self.semantic_chunker = None
         self.response_cache = None
         self.feedback_loop = None
+        
+        # Long-term memory agent
+        self.memory_manager: MemoryManager = get_memory_manager()
         
         # Performance metrics
         self.search_stats = {
@@ -841,6 +845,31 @@ class UnifiedVectorManager:
             logger.error(f"Failed to generate recommendations: {e}")
         
         return recommendations
+
+    # ── Stateful Vector Memory delegates ─────────────────────────────────────
+
+    def save_memory(self, user_id: str, query: str, response: str) -> bool:
+        """
+        Persist one Q&A exchange to the user's long-term memory store.
+
+        Called automatically by the /ask endpoint after every successful response.
+        """
+        return self.memory_manager.save_memory(user_id, query, response)
+
+    def retrieve_memory(
+        self, user_id: str, current_query: str, k: int = 3
+    ):
+        """
+        Retrieve the top-k past exchanges most relevant to the current query
+        for the given user.  Returns a list of LangChain Document objects.
+        """
+        return self.memory_manager.retrieve_memory(user_id, current_query, k)
+
+    def get_proactive_suggestion(self, user_id: str) -> dict:
+        """
+        Return recent_topics, last_seen, and memory_count for the /welcome endpoint.
+        """
+        return self.memory_manager.get_proactive_suggestion(user_id)
 
     def cleanup_resources(self):
         """

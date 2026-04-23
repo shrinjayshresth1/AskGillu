@@ -1,10 +1,12 @@
+import API_BASE_URL from "../config";
+
 // Utility to check backend health and attempt to start it
 export const checkBackendHealth = async () => {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
     
-    const response = await fetch('http://localhost:8000/status', {
+    const response = await fetch(`${API_BASE_URL}/status`, {
       signal: controller.signal
     });
     

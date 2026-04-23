@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_storage:/qdrant/storage
+    networks:
+      - askgillu-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - QDRANT_URL=http://qdrant:6333
+    volumes:
+      - ./backend/vectorstore:/app/vectorstore
+      - ./backend/docs:/app/docs
+      - ./backend/analytics_db:/app/analytics_db
+      - easyocr_models:/root/.EasyOCR
+    depends_on:
+      - qdrant
+    networks:
+      - askgillu-network
+
+  frontend:
+    build:
+      context: ./frontend-react
+      dockerfile: Dockerfile
+      args:
+        - REACT_APP_API_URL=http://your-server-ip:8000
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - askgillu-network
+
+volumes:
+  qdrant_storage:
+  easyocr_models:
+
+networks:
+  askgillu-network:
+    driver: bridge

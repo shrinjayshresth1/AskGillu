@@ -396,20 +396,29 @@ class AdvancedReRanker:
                 embeddings = self.semantic_model.encode([text1, text2], convert_to_tensor=True)
                 similarity = util.pytorch_cos_sim(embeddings[0], embeddings[1])
                 return float(similarity)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"Semantic similarity failed, falling back to sequence matcher: {e}")
         
-        # Fallback to simple token overlap
+        # Fallback to SequenceMatcher combined with token overlap
+        import difflib
+        
+        # Calculate sequence similarity
+        seq_matcher = difflib.SequenceMatcher(None, text1.lower(), text2.lower())
+        seq_ratio = seq_matcher.ratio()
+        
+        # Token overlap
         tokens1 = set(text1.lower().split())
         tokens2 = set(text2.lower().split())
         
         if not tokens1 or not tokens2:
-            return 0.0
+            return seq_ratio
         
         intersection = tokens1.intersection(tokens2)
         union = tokens1.union(tokens2)
+        token_ratio = len(intersection) / len(union)
         
-        return len(intersection) / len(union)
+        # Combine both metrics (giving slightly more weight to token overlap for RAG context)
+        return (seq_ratio * 0.4) + (token_ratio * 0.6)
 
     def _apply_diversity_filter(self, scored_docs: List[ScoredDocument]) -> List[ScoredDocument]:
         """Apply final diversity filtering"""

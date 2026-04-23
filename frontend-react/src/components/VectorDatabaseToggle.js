@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import API_BASE_URL from '../config';
 
 const VectorDatabaseToggle = () => {
   const [currentDb, setCurrentDb] = useState('');
@@ -10,7 +11,7 @@ const VectorDatabaseToggle = () => {
   // Fetch current database status
   const fetchCurrentDatabase = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/vector-db/current');
+      const response = await fetch(`${API_BASE_URL}/api/vector-db/current`);
       const data = await response.json();
       
       if (data.success) {
@@ -36,7 +37,7 @@ const VectorDatabaseToggle = () => {
       const formData = new FormData();
       formData.append('new_db_type', newDbType);
       
-      const response = await fetch('http://localhost:8000/api/vector-db/switch', {
+      const response = await fetch(`${API_BASE_URL}/api/vector-db/switch`, {
         method: 'POST',
         body: formData
       });
@@ -148,7 +149,7 @@ const VectorDatabaseToggle = () => {
 
         .toggle-title {
           margin: 0;
-          color: #333;
+          color: var(--text-primary);
           font-size: 1.2rem;
           font-weight: 600;
           display: flex;
@@ -185,7 +186,7 @@ const VectorDatabaseToggle = () => {
 
         .status-text {
           font-size: 0.85rem;
-          color: #666;
+          color: var(--text-secondary);
           font-weight: 500;
         }
 
@@ -199,14 +200,14 @@ const VectorDatabaseToggle = () => {
 
         .current-label {
           margin: 0 0 4px 0;
-          color: #666;
+          color: var(--text-secondary);
           font-size: 0.9rem;
           font-weight: 500;
         }
 
         .current-value {
           margin: 0;
-          color: #333;
+          color: var(--text-primary);
           font-size: 1.1rem;
           font-weight: 600;
         }
@@ -227,7 +228,7 @@ const VectorDatabaseToggle = () => {
           border: 2px solid rgba(255, 255, 255, 0.2);
           border-radius: 8px;
           background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
-          color: #333;
+          color: var(--text-primary);
           font-weight: 600;
           cursor: pointer;
           transition: all 0.3s ease;
@@ -300,7 +301,7 @@ const VectorDatabaseToggle = () => {
           display: flex;
           align-items: center;
           gap: 10px;
-          color: #666;
+          color: var(--text-secondary);
           font-size: 0.9rem;
         }
 

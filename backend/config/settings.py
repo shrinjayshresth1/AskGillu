@@ -14,6 +14,7 @@ class Config:
     
     # API Configuration
     GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+    TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
     
     # Vector Database Configuration
     DEFAULT_DB_TYPE = os.getenv("DEFAULT_DB_TYPE", "qdrant")
@@ -34,33 +35,9 @@ class Config:
     ]
     
     # Web Search Configuration
+    # Only allow SRMU domain to restrict web search purely to the university
     ALLOWED_WEBSITES: List[str] = [
-        # Educational and academic websites
-        "wikipedia.org",
-        "edu",  # This will match any .edu domain
-        "scholar.google.com",
-        "researchgate.net",
-        "arxiv.org",
-        "ieee.org",
-        "acm.org",
-        
-        # News and reliable sources
-        "bbc.com",
-        "reuters.com",
-        "nature.com",
-        "science.org",
-        
-        # Government and official sources
-        "gov",  # This will match any .gov domain
-        "who.int",
-        "un.org",
-        
-        # Technology and documentation
-        "stackoverflow.com",
-        "github.com",
-        "docs.python.org",
-        "developer.mozilla.org",
-        "srmu.ac.in/placement-overview"
+        "srmu.ac.in"
     ]
     
     # Auto-scraping Configuration

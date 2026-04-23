@@ -29,3 +29,9 @@ spacy
 numpy
 scikit-learn
 faiss-cpu
+easyocr
+torch
+torchvision
+torchaudio --index-url https://download.pytorch.org/whl/cpu
+spacy-pkuseg
+

@@ -577,9 +577,47 @@ class FeedbackLoop:
         } for doc in documents]
 
     def _update_analytics_cache(self):
-        """Update analytics cache (placeholder for more complex analytics)"""
-        # This could trigger more sophisticated analytics processing
-        pass
+        """Update analytics cache with aggregated metrics from SQLite database"""
+        if not self.enable_analytics:
+            return
+
+        with self.db_lock:
+            try:
+                conn = sqlite3.connect(self.db_path)
+                cursor = conn.cursor()
+                
+                # Get total counts by feedback type
+                cursor.execute("SELECT user_feedback, COUNT(*) FROM feedback GROUP BY user_feedback")
+                type_counts = {row[0]: row[1] for row in cursor.fetchall()}
+                
+                # Get average scores
+                cursor.execute("SELECT AVG(relevance_score), AVG(response_quality) FROM feedback")
+                avg_scores = cursor.fetchone()
+                
+                # Get missing info keywords
+                cursor.execute("SELECT missing_info FROM feedback WHERE missing_info IS NOT NULL AND missing_info != ''")
+                missing_info_rows = cursor.fetchall()
+                
+                conn.close()
+                
+                # Process missing info simple keywords
+                missing_info_text = " ".join([row[0] for row in missing_info_rows if row[0]])
+                words = [w.lower() for w in missing_info_text.split() if len(w) > 3]
+                from collections import Counter
+                top_missing_words = [word for word, count in Counter(words).most_common(5)]
+                
+                self.analytics_cache = {
+                    "last_updated": datetime.now().isoformat(),
+                    "feedback_counts": type_counts,
+                    "avg_relevance_score": avg_scores[0] if avg_scores and avg_scores[0] is not None else 0.0,
+                    "avg_response_quality": avg_scores[1] if avg_scores and avg_scores[1] is not None else 0.0,
+                    "top_missing_info_keywords": top_missing_words,
+                    "total_feedback": sum(type_counts.values())
+                }
+                self.cache_expiry = datetime.now() + timedelta(hours=1)
+                logger.info("Successfully updated feedback analytics cache")
+            except Exception as e:
+                logger.error(f"Error updating feedback analytics cache: {e}")
 
 # Global feedback loop instance
 _feedback_instance = None

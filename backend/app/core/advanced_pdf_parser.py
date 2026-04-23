@@ -48,6 +48,15 @@ try:
 except ImportError:
     OCR_AVAILABLE = False
 
+# EasyOCR fallback
+try:
+    import easyocr
+    import numpy as np
+    import fitz # Ensure PyMuPDF is available
+    EASYOCR_AVAILABLE = True
+except ImportError:
+    EASYOCR_AVAILABLE = False
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -72,11 +81,8 @@ class AdvancedPDFParser:
             parsers.append("pymupdf")
         if PDFMINER_AVAILABLE:
             parsers.append("pdfminer")
-        if OCR_AVAILABLE:
-            parsers.append("ocr")
-        return parsers
-        if PYMUPDF_AVAILABLE:
-            parsers.append("pymupdf")
+        if EASYOCR_AVAILABLE:
+            parsers.append("easyocr")
         if OCR_AVAILABLE:
             parsers.append("ocr")
         return parsers
@@ -204,6 +210,67 @@ class AdvancedPDFParser:
         except Exception as e:
             logger.error(f"OCR extraction failed: {str(e)}")
             return "", {"parser": "ocr", "success": False, "error": str(e)}
+
+    def extract_text_easyocr(self, file_path: str) -> Tuple[str, Dict]:
+        """Extract text from scanned PDFs using EasyOCR (effortless local AI parsing)"""
+        try:
+            text = ""
+            metadata = {
+                "parser": "easyocr",
+                "pages": 0,
+                "success": True,
+                "method": "easyocr_local"
+            }
+            
+            doc = fitz.open(file_path)
+            metadata["pages"] = len(doc)
+            
+            # Initialize reader (downloads weights on first run ~100MB)
+            logger.info("Initializing EasyOCR. This may take a moment on first run to download model weights.")
+            
+            # Use a dummy wrapper to suppress EasyOCR's progress bar on Windows
+            # which can crash due to 'charmap' encoding errors with unicode blocks
+            import sys
+            class DummyFile(object):
+                def write(self, x): pass
+                def flush(self): pass
+                
+            save_stdout = sys.stdout
+            save_stderr = sys.stderr
+            sys.stdout = DummyFile()
+            sys.stderr = DummyFile()
+            
+            try:
+                reader = easyocr.Reader(['en'], gpu=False)
+            finally:
+                sys.stdout = save_stdout
+                sys.stderr = save_stderr
+            
+            for page_num in range(len(doc)):
+                page = doc.load_page(page_num)
+                
+                # Convert page to image at reasonable resolution
+                mat = fitz.Matrix(2.0, 2.0)
+                pix = page.get_pixmap(matrix=mat)
+                
+                import numpy as np
+                img_data = np.frombuffer(pix.samples, dtype=np.uint8).reshape(pix.height, pix.width, pix.n)
+                if pix.n == 4: # Convert RGBA to RGB
+                    img_data = img_data[:, :, :3]
+                
+                # Send to EasyOCR
+                ocr_results = reader.readtext(img_data)
+                page_text = "\n".join([res[1] for res in ocr_results])
+                
+                if page_text and page_text.strip():
+                    text += page_text.strip() + "\n\n"
+                    
+            doc.close()
+            return text.strip(), metadata
+            
+        except Exception as e:
+            logger.error(f"EasyOCR extraction failed: {str(e)}")
+            return "", {"parser": "easyocr", "success": False, "error": str(e)}
     
     def extract_text_pdfminer(self, file_path: str) -> Tuple[str, Dict]:
         """Extract text using pdfminer.six (excellent for complex layouts)"""
@@ -296,11 +363,19 @@ class AdvancedPDFParser:
             if metadata["success"] and text:
                 results.append((text, metadata, len(text)))
         
-        # If no text found and OCR is available, try OCR
-        if not results and "ocr" in self.available_parsers:
-            text, metadata = self.extract_text_ocr(file_path)
-            if metadata["success"] and text:
-                results.append((text, metadata, len(text)))
+        # If no text found, try easyocr first, then OCR
+        if not results:
+            if "easyocr" in self.available_parsers:
+                logger.info("Standard parsing yielded no text. Falling back to EasyOCR (local)...")
+                text, metadata = self.extract_text_easyocr(file_path)
+                if metadata["success"] and text:
+                    results.append((text, metadata, len(text)))
+            
+            elif "ocr" in self.available_parsers:
+                logger.info("Standard parsing yielded no text. Falling back to local Tesseract OCR...")
+                text, metadata = self.extract_text_ocr(file_path)
+                if metadata["success"] and text:
+                    results.append((text, metadata, len(text)))
         
         if not results:
             return "", {"parser": "hybrid", "success": False, "error": "All parsers failed"}
@@ -341,6 +416,8 @@ class AdvancedPDFParser:
             return self.extract_text_pymupdf(file_path)
         elif method == "pdfminer" and "pdfminer" in self.available_parsers:
             return self.extract_text_pdfminer(file_path)
+        elif method == "easyocr" and "easyocr" in self.available_parsers:
+            return self.extract_text_easyocr(file_path)
         elif method == "ocr" and "ocr" in self.available_parsers:
             return self.extract_text_ocr(file_path)
         else:

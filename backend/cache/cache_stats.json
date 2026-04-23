@@ -1,8 +1,8 @@
 {
-  "total_queries": 9,
-  "cache_hits": 0,
-  "cache_misses": 9,
-  "cache_size": 9,
+  "total_queries": 17,
+  "cache_hits": 1,
+  "cache_misses": 17,
+  "cache_size": 14,
   "avg_response_time_cached": 0.0,
   "avg_response_time_uncached": 0.0,
   "top_queries": {
@@ -14,7 +14,12 @@
     "Tell me about OGC standards": 1,
     "Tell me about Shrinjay Shresth, In what area of the technology does he works ?": 1,
     "I am a first year student in SRMU and i have interest in technical stuffs, how do i proceed in SR<U": 1,
-    "I am a first year student and i am eager to apply for technical understanding and clubs. What should i apply for": 1
+    "I am a first year student and i am eager to apply for technical understanding and clubs. What should i apply for": 1,
+    "I am new to university and i am eager to learn into technical aspect of my journey, How can i do it in srmu": 1,
+    "Tell me about the tech society in SRMU?": 1,
+    "Tell me if i wanted to opt for tech in SRMU, what all options do i have?": 1,
+    "What do you know about SRMU ?": 1,
+    "how to appear for makeup examination": 1
   },
   "last_cleanup": null
 }
