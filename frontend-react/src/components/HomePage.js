@@ -10,13 +10,16 @@ import {
   Phone,
   MapPin,
   Zap,
+  Camera,
+  Languages,
+  RefreshCw,
   Brain,
 } from "lucide-react";
 
 const PILLARS = [
   {
     key: "multimodal",
-    icon: "📸",
+    icon: Camera,
     title: "Multimodal",
     desc: "Upload images, scanned notices or fee receipts — AskGillu reads and understands them.",
     badge: "Vision AI",
@@ -24,7 +27,7 @@ const PILLARS = [
   },
   {
     key: "multilingual",
-    icon: "🌐",
+    icon: Languages,
     title: "Multilingual",
     desc: "Ask in Hindi, get answers in Hindi. Seamless Hindi ↔ English RAG pipeline.",
     badge: "Hindi + English",
@@ -32,7 +35,7 @@ const PILLARS = [
   },
   {
     key: "agentic",
-    icon: "🤖",
+    icon: Brain,
     title: "Agentic RAG",
     desc: "The AI doesn't just answer — it acts. Book facilities, raise grievances, check fee status.",
     badge: "Tool Calling",
@@ -40,7 +43,7 @@ const PILLARS = [
   },
   {
     key: "realtime",
-    icon: "⚡",
+    icon: RefreshCw,
     title: "Real-time Ingestion",
     desc: "New document uploaded to docs/? The system detects it and re-indexes instantly.",
     badge: "Live Updates",
@@ -151,10 +154,10 @@ const HomePage = ({ onNavigateToChat }) => {
             </p>
 
             <div className="hero-tags">
-              <span className="hero-tag multimodal">📸 Multimodal</span>
-              <span className="hero-tag multilingual">🌐 Multilingual</span>
-              <span className="hero-tag agentic">🤖 Agentic RAG</span>
-              <span className="hero-tag realtime">⚡ Real-time</span>
+              <span className="hero-tag multimodal">Vision AI</span>
+              <span className="hero-tag multilingual">Multilingual</span>
+              <span className="hero-tag agentic">Agentic RAG</span>
+              <span className="hero-tag realtime">Real-time</span>
             </div>
 
             <div className="hero-actions">
@@ -218,7 +221,9 @@ const HomePage = ({ onNavigateToChat }) => {
           <div className="pillars-grid">
             {PILLARS.map((p) => (
               <div key={p.key} className={`pillar-card ${p.cls}`}>
-                <div className="pillar-icon">{p.icon}</div>
+                <div className="pillar-icon">
+                  <p.icon size={22} />
+                </div>
                 <div className="pillar-title">{p.title}</div>
                 <div className="pillar-desc">{p.desc}</div>
                 <span className="pillar-badge">{p.badge}</span>
@@ -400,9 +405,9 @@ const HomePage = ({ onNavigateToChat }) => {
           <div className="footer-bottom">
             <p>© 2025 Shri Ramswaroop Memorial University. All rights reserved.</p>
             <div className="footer-pills">
-              <span className="footer-pill">Multimodal</span>
+              <span className="footer-pill">Vision AI</span>
               <span className="footer-pill">Multilingual</span>
-              <span className="footer-pill">Agentic</span>
+              <span className="footer-pill">Agentic RAG</span>
             </div>
           </div>
         </div>

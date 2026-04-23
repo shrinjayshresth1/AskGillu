@@ -8,31 +8,33 @@
    ASKGILLU 2.0 — DESIGN SYSTEM TOKENS
    ============================================================ */
 :root {
-  /* Backgrounds */
-  --bg-base:        #080d1a;
-  --bg-surface:     #0f1629;
-  --bg-elevated:    #1a2240;
+  /* Backgrounds – warm dark */
+  --bg-base:        #0d0a07;
+  --bg-surface:     #141009;
+  --bg-elevated:    #1f1710;
   --bg-overlay:     rgba(255,255,255,0.04);
 
-  /* Accent – Indigo */
-  --accent-primary: #6366f1;
-  --accent-light:   #818cf8;
-  --accent-glow:    rgba(99,102,241,0.35);
+  /* Accent – Burnt Orange (logo-matched) */
+  --accent-primary: #e8611a;
+  --accent-light:   #f4883e;
+  --accent-glow:    rgba(232,97,26,0.35);
 
   /* Secondary accents */
-  --accent-purple:  #a855f7;
+  --accent-amber:   #d97706;
+  --accent-cream:   #f5e6d3;
   --accent-green:   #10b981;
   --accent-orange:  #f59e0b;
   --accent-blue:    #3b82f6;
+  --accent-purple:  var(--accent-amber);
 
   /* Text */
-  --text-primary:   #f1f5f9;
-  --text-secondary: #94a3b8;
-  --text-muted:     #475569;
+  --text-primary:   #faf5ef;
+  --text-secondary: #a89880;
+  --text-muted:     #6b5a48;
 
   /* Borders */
-  --border-subtle:  rgba(255,255,255,0.07);
-  --border-accent:  rgba(99,102,241,0.4);
+  --border-subtle:  rgba(232,97,26,0.12);
+  --border-accent:  rgba(232,97,26,0.45);
 
   /* Radius */
   --r-sm:  8px;
@@ -42,9 +44,9 @@
   --r-2xl: 32px;
 
   /* Shadows */
-  --shadow-card:    0 4px 24px rgba(0,0,0,0.4);
-  --shadow-glow:    0 0 30px rgba(99,102,241,0.25);
-  --shadow-hover:   0 8px 40px rgba(99,102,241,0.35);
+  --shadow-card:    0 4px 24px rgba(0,0,0,0.5);
+  --shadow-glow:    0 0 30px rgba(232,97,26,0.22);
+  --shadow-hover:   0 8px 40px rgba(232,97,26,0.32);
 }
 
 /* ============================================================
@@ -105,7 +107,7 @@ code, pre {
 }
 @keyframes pulseGlow {
   0%, 100% { box-shadow: var(--shadow-glow); }
-  50%       { box-shadow: 0 0 50px rgba(99,102,241,0.5); }
+  50%       { box-shadow: 0 0 50px rgba(232,97,26,0.45); }
 }
 @keyframes typing {
   0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
@@ -144,12 +146,12 @@ code, pre {
 }
 .chat-root::before {
   width: 500px; height: 500px;
-  background: rgba(99,102,241,0.08);
+  background: rgba(232,97,26,0.07);
   top: -150px; left: -150px;
 }
 .chat-root::after {
   width: 400px; height: 400px;
-  background: rgba(168,85,247,0.06);
+  background: rgba(217,119,6,0.05);
   bottom: -100px; right: -100px;
 }
 
@@ -179,7 +181,7 @@ code, pre {
 .chat-logo {
   width: 36px; height: 36px;
   border-radius: var(--r-sm);
-  box-shadow: 0 0 16px rgba(99,102,241,0.3);
+  box-shadow: 0 0 16px rgba(232,97,26,0.25);
 }
 
 .chat-brand-name {
@@ -195,7 +197,7 @@ code, pre {
   font-size: 0.65rem;
   font-weight: 700;
   padding: 2px 8px;
-  background: linear-gradient(135deg, var(--accent-primary), var(--accent-purple));
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-amber));
   border-radius: 20px;
   color: white;
   letter-spacing: 0.05em;
@@ -377,7 +379,7 @@ code, pre {
   transition: all 0.2s ease;
 }
 .suggestion-chip:hover {
-  background: rgba(99,102,241,0.15);
+  background: rgba(232,97,26,0.12);
   border-color: var(--border-accent);
   color: var(--accent-light);
 }
@@ -405,7 +407,7 @@ code, pre {
   font-weight: 700;
 }
 .message-avatar.ai-avatar {
-  background: linear-gradient(135deg, var(--accent-primary), var(--accent-purple));
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-amber));
   overflow: hidden;
 }
 .message-avatar.ai-avatar img {
@@ -438,10 +440,10 @@ code, pre {
 
 /* User bubble */
 .bubble-user {
-  background: linear-gradient(135deg, var(--accent-primary), #4f46e5);
+  background: linear-gradient(135deg, var(--accent-primary), #b84a0e);
   color: white;
   border-radius: var(--r-lg) var(--r-sm) var(--r-lg) var(--r-lg);
-  box-shadow: 0 4px 20px rgba(99,102,241,0.3);
+  box-shadow: 0 4px 20px rgba(232,97,26,0.28);
 }
 
 /* AI bubble */
@@ -482,9 +484,9 @@ code, pre {
   font-size: 0.72rem;
   font-weight: 600;
 }
-.source-badge.docs    { background: rgba(99,102,241,0.15); color: var(--accent-light); border: 1px solid rgba(99,102,241,0.3); }
+.source-badge.docs    { background: rgba(232,97,26,0.15); color: var(--accent-light); border: 1px solid rgba(232,97,26,0.3); }
 .source-badge.web     { background: rgba(59,130,246,0.15); color: #60a5fa; border: 1px solid rgba(59,130,246,0.3); }
-.source-badge.image   { background: rgba(168,85,247,0.15); color: #c084fc; border: 1px solid rgba(168,85,247,0.3); }
+.source-badge.image   { background: rgba(217,119,6,0.15); color: #fbbf24; border: 1px solid rgba(217,119,6,0.3); }
 .source-badge.tool    { background: rgba(245,158,11,0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); }
 .source-badge.cached  { background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.3); }
 
@@ -550,7 +552,7 @@ code, pre {
 .md-content em { font-style: italic; color: var(--text-secondary); }
 
 .md-content code {
-  background: rgba(99,102,241,0.15);
+  background: rgba(232,97,26,0.12);
   padding: 2px 6px;
   border-radius: 4px;
   font-size: 0.87em;
@@ -594,11 +596,11 @@ code, pre {
   align-items: center;
   gap: 8px;
   padding: 6px 12px;
-  background: rgba(168,85,247,0.15);
-  border: 1px solid rgba(168,85,247,0.35);
+  background: rgba(232,97,26,0.12);
+  border: 1px solid rgba(232,97,26,0.35);
   border-radius: var(--r-md);
   font-size: 0.8rem;
-  color: #c084fc;
+  color: var(--accent-light);
   margin-bottom: 6px;
 }
 .file-preview-chip img {
@@ -651,7 +653,7 @@ code, pre {
 }
 .input-row:focus-within {
   border-color: var(--border-accent);
-  box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
+  box-shadow: 0 0 0 3px rgba(232,97,26,0.10);
 }
 
 .chat-textarea {
@@ -703,7 +705,7 @@ code, pre {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, var(--accent-primary), #4f46e5);
+  background: linear-gradient(135deg, var(--accent-primary), #b84a0e);
   border: none;
   border-radius: var(--r-md);
   color: white;
@@ -713,7 +715,7 @@ code, pre {
 }
 .send-btn:hover:not(:disabled) {
   transform: scale(1.05);
-  box-shadow: 0 4px 16px rgba(99,102,241,0.45);
+  box-shadow: 0 4px 16px rgba(232,97,26,0.45);
 }
 .send-btn:disabled {
   opacity: 0.4;
