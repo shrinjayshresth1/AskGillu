@@ -62,11 +62,21 @@ def initialize_documents():
     try:
         status = vector_manager.get_status()
         existing_count = status.get("documents_count", 0)
+        force_reindex = os.getenv("FORCE_REINDEX", "false").lower() == "true"
         
-        if existing_count > 0:
+        if existing_count > 0 and not force_reindex:
             print(f"[DOCS] Vector database already contains {existing_count} documents. Skipping initialization.")
-            print(f"[DOCS] If you want to reload documents, clear the collection first or restart with a fresh database.")
+            print(f"[DOCS] If you want to force reload, set FORCE_REINDEX=true in environment variables.")
             return
+        
+        if force_reindex:
+            print(f"[DOCS] FORCE_REINDEX is true. Wiping and re-initializing documents...")
+            if vector_manager.db_type == "qdrant":
+                try:
+                    vector_manager.vector_store.delete_collection()
+                    vector_manager.vector_store.create_collection()
+                except:
+                    pass
         else:
             print(f"[DOCS] Qdrant collection is empty. Proceeding with document initialization...")
     except Exception as e:
