@@ -36,5 +36,5 @@ RUN mkdir -p vectorstore docs cache analytics_db
 # Expose port
 EXPOSE 8000
 
-# Start command (shell form so $PORT env var is expanded)
-CMD uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}
+# Start command
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
