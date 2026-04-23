@@ -24,6 +24,12 @@ try:
     WATCHDOG_AVAILABLE = True
 except ImportError:
     WATCHDOG_AVAILABLE = False
+    Observer = None
+    FileCreatedEvent = None
+    FileModifiedEvent = None
+    # Provide a dummy base class so the class definition doesn't crash
+    class FileSystemEventHandler:
+        pass
 
 logger = logging.getLogger(__name__)
 
