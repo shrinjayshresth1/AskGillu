@@ -557,32 +557,15 @@ async def ask_question(
         # Get context from documents and optionally web search with metadata
         context, search_metadata = combine_sources(processed_question, system_prompt, use_web_search)
         
-        # ── Context Gating: refuse if no relevant context found ──
+        # ── Context Gating: Refined fallback ──
         docs_found = search_metadata.get("documents_found", 0)
         has_web_context = use_web_search and context and "WEB SEARCH RESULTS" in context
         
+        # We no longer hard-refuse here. Instead, we let the LLM handle it with 
+        # a clear instruction that university documents were not found.
         if docs_found == 0 and not has_web_context:
-            no_info_msg = (
-                "I'm sorry, I don't have enough information in my university documents to answer that question. "
-                "Please try rephrasing your question, or ask something related to SRMU's academics, admissions, "
-                "fees, placements, campus life, or policies."
-            )
-            if language == "hi" or was_translated:
-                no_info_msg = translate_response_to_hindi(no_info_msg)
-            return {
-                "answer": no_info_msg,
-                "sources_used": {"documents": False, "web_search": False, "web_search_restricted": False},
-                "advanced_rag_features": {
-                    "documents_found": 0,
-                    "cache_hit": False,
-                    "semantic_chunks_used": False,
-                    "results_reranked": False,
-                    "response_time_ms": 0,
-                    "context_gated": True
-                },
-                "language": language,
-                "translated": was_translated,
-            }
+            context = "[NOTICE: NO RELEVANT UNIVERSITY DOCUMENTS FOUND FOR THIS SPECIFIC QUERY]"
+            search_metadata["context_gated"] = False # We let it pass
         
         # Create the full prompt with strict grounding rules
         full_prompt = f"""You are AskGillu, SRMU's official AI assistant.
@@ -590,11 +573,11 @@ async def ask_question(
 {system_prompt}
 
 IMPORTANT RULES — you MUST follow these:
-1. Answer ONLY using the CONTEXT provided below. Do NOT use your own knowledge or training data.
-2. If the context does not contain the answer, respond: "I don't have enough information in my documents to answer that."
-3. NEVER fabricate facts, statistics, names, dates, fees, phone numbers, or any specific information.
-4. If the context partially answers the question, share only what is supported and clearly state what is missing.
-5. When possible, reference the source (e.g., "According to the university documents...").
+1. PRIMARY DIRECTIVE: Answer using the CONTEXT provided below. 
+2. SECONDARY DIRECTIVE (Generic Info): If the context is missing but the question is about basic, well-known facts about SRMU (like its location in Lucknow, its general reputation, or its status as a private university), you MAY answer using your internal knowledge. 
+3. DISCLAIMER: If you use internal knowledge because documents are missing, start your response with: "Based on general information (not found in official documents)..."
+4. NEVER fabricate specific data like fees, exact dates, names of officials, or phone numbers if not in the context.
+5. If you truly don't know, say: "I don't have enough information to answer that."
 
 {memory_context_block}--- CONTEXT START ---
 {context}
@@ -1744,7 +1727,8 @@ async def ask_with_image(
 @app.post("/ask-agentic")
 async def ask_agentic(
     question: str = Form(...),
-    system_prompt: str = Form("You are AskGillu, SRMU's agentic AI assistant. Answer ONLY using provided context and tool results. Never fabricate information."),
+    system_prompt: str = Form("You are AskGillu, SRMU's agentic AI assistant. Answer using provided context and tool results. For general university facts, you can use common knowledge if context is missing."),
+    use_web_search: bool = Form(False),
     language: str = Form("en"),
 ):
     """
@@ -1782,38 +1766,27 @@ async def ask_agentic(
                 }
                 tool_context = f"\n\nTOOL RESULT ({intent}):\n{tool_result.get('message', '')}"
 
-        # Get RAG context
-        context, search_metadata = combine_sources(processed_q, system_prompt, use_web_search=False)
+        # Get RAG context - FIX: Respect the use_web_search toggle
+        context, search_metadata = combine_sources(processed_q, system_prompt, use_web_search=use_web_search)
 
-        # Context gating for non-tool queries
+        # Context gating for non-tool queries - RELAXED
         docs_found = search_metadata.get("documents_found", 0)
-        if intent == "rag_only" and docs_found == 0:
-            no_info_msg = (
-                "I'm sorry, I don't have enough information in my university documents to answer that question. "
-                "Please try rephrasing your question, or ask something related to SRMU's academics, admissions, "
-                "fees, placements, campus life, or policies."
-            )
-            if language == "hi" or was_translated:
-                no_info_msg = translate_response_to_hindi(no_info_msg)
-            return {
-                "answer": no_info_msg,
-                "agent_action": None,
-                "sources_used": {"documents": False, "web_search": False, "tool": False},
-                "advanced_rag_features": {"documents_found": 0, "cache_hit": False, "context_gated": True},
-                "intent": intent,
-                "language": language,
-                "translated": was_translated,
-            }
+        has_web_context = use_web_search and context and "WEB SEARCH RESULTS" in context
+        
+        if intent == "rag_only" and docs_found == 0 and not has_web_context:
+            context = "[NOTICE: NO RELEVANT UNIVERSITY DOCUMENTS FOUND]"
+            search_metadata["context_gated"] = False
 
         full_prompt = f"""You are AskGillu, SRMU's agentic AI assistant.
 
 {system_prompt}
 
 IMPORTANT RULES — you MUST follow these:
-1. Answer ONLY using the CONTEXT and TOOL RESULTS provided below.
-2. NEVER fabricate facts, statistics, names, dates, fees, or any specific information.
-3. If a tool was used, summarise the action taken and the result clearly.
-4. If the context does not contain the answer, say: "I don't have enough information to answer that."
+1. PRIMARY DIRECTIVE: Answer using the CONTEXT and TOOL RESULTS provided below.
+2. SECONDARY DIRECTIVE (Generic Info): If context/tools are missing but the question is about basic SRMU facts (location, type, city), you MAY use internal knowledge.
+3. If using internal knowledge, clearly state: "Based on general information..."
+4. NEVER fabricate specific data (fees, contacts, dates) not in the context.
+5. If the context does not contain the answer, and it's not a general fact, say: "I don't have enough information to answer that."
 
 --- CONTEXT START ---
 {context}{tool_context}

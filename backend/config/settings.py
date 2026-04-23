@@ -35,9 +35,15 @@ class Config:
     ]
     
     # Web Search Configuration
-    # Only allow SRMU domain to restrict web search purely to the university
+    # Trusted domains for university-related info
     ALLOWED_WEBSITES: List[str] = [
-        "srmu.ac.in"
+        "srmu.ac.in",
+        "wikipedia.org",
+        "collegedekho.com",
+        "shiksha.com",
+        "careers360.com",
+        "news18.com",
+        "timesofindia.indiatimes.com"
     ]
     
     # Auto-scraping Configuration
